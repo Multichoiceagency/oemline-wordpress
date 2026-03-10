@@ -7,7 +7,7 @@ services:
     entrypoint: ["docker-entrypoint-custom.sh"]
     command: ["apache2-foreground"]
     environment:
-      WORDPRESS_DB_HOST: ${WORDPRESS_DB_HOST:-db}
+      WORDPRESS_DB_HOST: db
       WORDPRESS_DB_USER: ${WORDPRESS_DB_USER:-wordpress}
       WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
       WORDPRESS_DB_NAME: ${WORDPRESS_DB_NAME:-wordpress}

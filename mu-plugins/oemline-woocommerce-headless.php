@@ -444,8 +444,7 @@ add_action('rest_api_init', function () {
                     $order->add_product(wc_get_product($product_id), $quantity);
                 } else {
                     // Add as custom line item (Dashboard API product — no WC product needed)
-                    $item_id = $order->add_item(new WC_Order_Item_Product());
-                    $order_item = $order->get_item($item_id);
+                    $order_item = new WC_Order_Item_Product();
                     $order_item->set_props([
                         'name'     => $product_name,
                         'quantity' => $quantity,
@@ -456,6 +455,7 @@ add_action('rest_api_init', function () {
                     $order_item->add_meta_data('_article_no', $article_no, true);
                     $order_item->add_meta_data('_product_image', $image, true);
                     $order_item->add_meta_data('_brand', $brand, true);
+                    $order->add_item($order_item);
                     $order_item->save();
                 }
             }

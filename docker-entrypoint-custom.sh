@@ -98,9 +98,28 @@ echo "[OEMline] Sync complete"
 
   # Check if WordPress is already installed
   if $WP_CLI core is-installed 2>/dev/null; then
-    echo "[OEMline] WordPress already installed — skipping"
+    echo "[OEMline] WordPress already installed — skipping core install"
     # Flush rewrite rules on every startup (fixes permalink 404s)
     $WP_CLI rewrite flush 2>/dev/null || true
+
+    # Sync admin credentials from env vars (idempotent — runs every startup)
+    # WP_ADMIN_PASSWORD or WP_ADMIN_PASS — both accepted
+    _WP_PASS="${WP_ADMIN_PASSWORD:-${WP_ADMIN_PASS}}"
+    if [ -n "${WP_ADMIN_USER}" ] && [ -n "${_WP_PASS}" ]; then
+      if $WP_CLI user get "${WP_ADMIN_USER}" 2>/dev/null; then
+        # User exists — update password and ensure administrator role
+        $WP_CLI user update "${WP_ADMIN_USER}" \
+          --user_pass="${_WP_PASS}" \
+          --role=administrator 2>/dev/null || true
+        echo "[OEMline] Admin credentials updated for ${WP_ADMIN_USER}"
+      else
+        # User does not exist — create it
+        $WP_CLI user create "${WP_ADMIN_USER}" "${WP_ADMIN_EMAIL:-admin@oemline.eu}" \
+          --role=administrator \
+          --user_pass="${_WP_PASS}" 2>/dev/null || true
+        echo "[OEMline] Admin user created: ${WP_ADMIN_USER}"
+      fi
+    fi
   else
     echo "[OEMline] Installing WordPress..."
     ADMIN_PASS="${WP_ADMIN_PASSWORD:-$(openssl rand -base64 16)}"

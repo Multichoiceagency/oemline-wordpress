@@ -529,7 +529,7 @@ add_action('rest_api_init', function () {
                         'mollie_wc_gateway_in3'           => 'in3',
                     ];
                     $mollie_method = $method_map[$payment_method] ?? 'ideal';
-                    $storefront_url = defined('STOREFRONT_URL') ? STOREFRONT_URL : getenv('STOREFRONT_URL') ?: 'https://oemline.eu';
+                    $storefront_url = defined('STOREFRONT_URL') ? STOREFRONT_URL : (getenv('STOREFRONT_URL') ?: 'https://oemline.eu');
                     $ch = curl_init('https://api.mollie.com/v2/payments');
                     curl_setopt_array($ch, [
                         CURLOPT_RETURNTRANSFER => true,

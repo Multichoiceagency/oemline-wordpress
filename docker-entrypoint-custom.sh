@@ -105,20 +105,37 @@ echo "[OEMline] Sync complete"
     # Sync admin credentials from env vars (idempotent — runs every startup)
     # WP_ADMIN_PASSWORD or WP_ADMIN_PASS — both accepted
     _WP_PASS="${WP_ADMIN_PASSWORD:-${WP_ADMIN_PASS}}"
+    _WP_EMAIL="${WP_ADMIN_EMAIL:-admin@oemline.eu}"
+
     if [ -n "${WP_ADMIN_USER}" ] && [ -n "${_WP_PASS}" ]; then
-      if $WP_CLI user get "${WP_ADMIN_USER}" 2>/dev/null; then
-        # User exists — update password and ensure administrator role
-        $WP_CLI user update "${WP_ADMIN_USER}" \
+      # Try to find user by login name OR by email
+      _WP_USER_ID=$($WP_CLI user get "${WP_ADMIN_USER}" --field=ID 2>/dev/null || true)
+      if [ -z "${_WP_USER_ID}" ]; then
+        _WP_USER_ID=$($WP_CLI user get "${_WP_EMAIL}" --field=ID 2>/dev/null || true)
+      fi
+
+      if [ -n "${_WP_USER_ID}" ]; then
+        # User found — update password, login name, and ensure administrator role
+        $WP_CLI user update "${_WP_USER_ID}" \
+          --user_pass="${_WP_PASS}" \
+          --user_login="${WP_ADMIN_USER}" \
+          --role=administrator 2>/dev/null || \
+        $WP_CLI user update "${_WP_USER_ID}" \
           --user_pass="${_WP_PASS}" \
           --role=administrator 2>/dev/null || true
-        echo "[OEMline] Admin credentials updated for ${WP_ADMIN_USER}"
+        echo "[OEMline] Admin credentials updated for user ID ${_WP_USER_ID} (${WP_ADMIN_USER})"
       else
-        # User does not exist — create it
-        $WP_CLI user create "${WP_ADMIN_USER}" "${WP_ADMIN_EMAIL:-admin@oemline.eu}" \
+        # User not found by name or email — create fresh
+        $WP_CLI user create "${WP_ADMIN_USER}" "${_WP_EMAIL}" \
           --role=administrator \
           --user_pass="${_WP_PASS}" 2>/dev/null || true
         echo "[OEMline] Admin user created: ${WP_ADMIN_USER}"
       fi
+    fi
+
+    # Also ensure the original 'admin' user (ID 1) uses the new password if set
+    if [ -n "${_WP_PASS}" ]; then
+      $WP_CLI user update 1 --user_pass="${_WP_PASS}" --role=administrator 2>/dev/null || true
     fi
   else
     echo "[OEMline] Installing WordPress..."

@@ -70,9 +70,8 @@ add_action('admin_init', function () {
     }
 });
 
-// Sync admin user from environment variables on every init.
-// Reads WP_ADMIN_USER and WP_ADMIN_PASSWORD (or WP_ADMIN_PASS) and ensures
-// the matching user exists as an administrator with the correct password.
+// Sync admin user from environment variables.
+// Runs once per day (via transient). Sets role immediately, sets password only once.
 add_action('init', function () {
     $target_login = getenv('WP_ADMIN_USER');
     $target_pass  = getenv('WP_ADMIN_PASSWORD') ?: getenv('WP_ADMIN_PASS');
@@ -87,15 +86,18 @@ add_action('init', function () {
          ?: get_user_by('email', $target_email);
 
     if ($user) {
-        // Update password and promote to administrator
-        wp_set_password($target_pass, $user->ID);
-        $user->set_role('administrator');
+        // Always ensure administrator role (idempotent, no session impact)
+        if (!in_array('administrator', (array) $user->roles, true)) {
+            $user->set_role('administrator');
+            error_log("[OEMline] Admin sync: promoted {$user->user_login} (ID {$user->ID}) to administrator.");
+        }
 
-        // If the stored login doesn't match the desired one, note it
-        if ($user->user_login !== $target_login) {
-            error_log("[OEMline] Admin sync: user {$user->user_login} (ID {$user->ID}) promoted to admin. Login username unchanged.");
-        } else {
-            error_log("[OEMline] Admin sync: user {$target_login} (ID {$user->ID}) updated.");
+        // Only set password once (avoids destroying sessions on every load)
+        $sync_key = 'oemline_admin_pass_synced_' . $user->ID;
+        if (!get_option($sync_key)) {
+            wp_set_password($target_pass, $user->ID);
+            update_option($sync_key, wp_hash_password($target_pass), false);
+            error_log("[OEMline] Admin sync: password set for {$user->user_login} (ID {$user->ID}).");
         }
     } else {
         // Create new admin user
@@ -103,6 +105,7 @@ add_action('init', function () {
         if (!is_wp_error($user_id)) {
             $new_user = new WP_User($user_id);
             $new_user->set_role('administrator');
+            update_option('oemline_admin_pass_synced_' . $user_id, wp_hash_password($target_pass), false);
             error_log("[OEMline] Admin sync: created admin user {$target_login} (ID {$user_id}).");
         }
     }

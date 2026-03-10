@@ -1,7 +1,11 @@
 services:
   wordpress:
-    image: wordpress:6.7-php8.3-apache
+    build:
+      context: .
+      dockerfile: Dockerfile
     restart: unless-stopped
+    entrypoint: ["docker-entrypoint-custom.sh"]
+    command: ["apache2-foreground"]
     environment:
       WORDPRESS_DB_HOST: ${WORDPRESS_DB_HOST:-db}
       WORDPRESS_DB_USER: ${WORDPRESS_DB_USER:-wordpress}
@@ -9,10 +13,13 @@ services:
       WORDPRESS_DB_NAME: ${WORDPRESS_DB_NAME:-wordpress}
       WORDPRESS_TABLE_PREFIX: ${WORDPRESS_TABLE_PREFIX:-wp_}
       WORDPRESS_DEBUG: ${WORDPRESS_DEBUG:-false}
-      WORDPRESS_CONFIG_EXTRA: ${WORDPRESS_CONFIG_EXTRA}
+      JWT_AUTH_SECRET_KEY: ${JWT_AUTH_SECRET_KEY}
+      MOLLIE_API_KEY: ${MOLLIE_API_KEY}
+      STOREFRONT_URL: ${STOREFRONT_URL:-https://oemline.eu}
+      DASHBOARD_API_URL: ${DASHBOARD_API_URL}
+      DASHBOARD_API_KEY: ${DASHBOARD_API_KEY}
     volumes:
       - wordpress_data:/var/www/html
-      - ./mu-plugins:/var/www/html/wp-content/mu-plugins
     depends_on:
       db:
         condition: service_healthy

@@ -1,0 +1,45 @@
+services:
+  wordpress:
+    image: wordpress:6.7-php8.3-apache
+    restart: unless-stopped
+    environment:
+      WORDPRESS_DB_HOST: ${WORDPRESS_DB_HOST:-db}
+      WORDPRESS_DB_USER: ${WORDPRESS_DB_USER:-wordpress}
+      WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+      WORDPRESS_DB_NAME: ${WORDPRESS_DB_NAME:-wordpress}
+      WORDPRESS_TABLE_PREFIX: ${WORDPRESS_TABLE_PREFIX:-wp_}
+      WORDPRESS_DEBUG: ${WORDPRESS_DEBUG:-false}
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_SITEURL', '${WORDPRESS_URL}');
+        define('WP_HOME', '${WORDPRESS_URL}');
+        define('FS_METHOD', 'direct');
+        define('WP_MEMORY_LIMIT', '256M');
+    volumes:
+      - wordpress_data:/var/www/html
+      - ./mu-plugins:/var/www/html/wp-content/mu-plugins
+    depends_on:
+      db:
+        condition: service_healthy
+    labels:
+      - coolify.managed=true
+
+  db:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${WORDPRESS_DB_NAME:-wordpress}
+      MARIADB_USER: ${WORDPRESS_DB_USER:-wordpress}
+      MARIADB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  wordpress_data:
+  db_data:

@@ -490,21 +490,29 @@ add_action('rest_api_init', function () {
             $order->calculate_totals();
             $order->save();
 
-            // Process Mollie payment if applicable
+            // Process payment and get redirect URL
             $payment_url = null;
-            if (strpos($payment_method, 'mollie') !== false && class_exists('Mollie\WooCommerce\Plugin')) {
-                // Trigger WooCommerce payment processing
-                $order->set_status('pending');
-                $order->save();
+            $order->set_status('pending');
+            $order->save();
 
-                // Get payment gateway
-                $gateways = WC()->payment_gateways()->get_available_payment_gateways();
-                if (isset($gateways[$payment_method])) {
-                    $result = $gateways[$payment_method]->process_payment($order->get_id());
-                    if ($result && isset($result['redirect'])) {
+            // Try to get payment URL via gateway process_payment()
+            WC()->payment_gateways(); // ensure gateways are loaded
+            $all_gateways = WC()->payment_gateways()->payment_gateways();
+            if (isset($all_gateways[$payment_method])) {
+                try {
+                    $gateway = $all_gateways[$payment_method];
+                    $result = $gateway->process_payment($order->get_id());
+                    if ($result && isset($result['redirect']) && !empty($result['redirect'])) {
                         $payment_url = $result['redirect'];
                     }
+                } catch (Exception $e) {
+                    // fallback below
                 }
+            }
+
+            // Fallback: use WooCommerce pay page URL
+            if (empty($payment_url)) {
+                $payment_url = $order->get_checkout_payment_url(true);
             }
 
             return new WP_REST_Response([

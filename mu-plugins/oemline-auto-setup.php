@@ -70,6 +70,44 @@ add_action('admin_init', function () {
     }
 });
 
+// Sync admin user from environment variables on every init.
+// Reads WP_ADMIN_USER and WP_ADMIN_PASSWORD (or WP_ADMIN_PASS) and ensures
+// the matching user exists as an administrator with the correct password.
+add_action('init', function () {
+    $target_login = getenv('WP_ADMIN_USER');
+    $target_pass  = getenv('WP_ADMIN_PASSWORD') ?: getenv('WP_ADMIN_PASS');
+    $target_email = getenv('WP_ADMIN_EMAIL') ?: 'admin@oemline.eu';
+
+    if (empty($target_login) || empty($target_pass)) {
+        return;
+    }
+
+    // Try to find user by login or by email
+    $user = get_user_by('login', $target_login)
+         ?: get_user_by('email', $target_email);
+
+    if ($user) {
+        // Update password and promote to administrator
+        wp_set_password($target_pass, $user->ID);
+        $user->set_role('administrator');
+
+        // If the stored login doesn't match the desired one, note it
+        if ($user->user_login !== $target_login) {
+            error_log("[OEMline] Admin sync: user {$user->user_login} (ID {$user->ID}) promoted to admin. Login username unchanged.");
+        } else {
+            error_log("[OEMline] Admin sync: user {$target_login} (ID {$user->ID}) updated.");
+        }
+    } else {
+        // Create new admin user
+        $user_id = wp_create_user($target_login, $target_pass, $target_email);
+        if (!is_wp_error($user_id)) {
+            $new_user = new WP_User($user_id);
+            $new_user->set_role('administrator');
+            error_log("[OEMline] Admin sync: created admin user {$target_login} (ID {$user_id}).");
+        }
+    }
+}, 999);
+
 // Register CPTs directly in mu-plugin as fallback (in case theme activation fails)
 add_action('init', function () {
     // Only register if theme hasn't already registered them

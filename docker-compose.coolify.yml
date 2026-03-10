@@ -9,11 +9,7 @@ services:
       WORDPRESS_DB_NAME: ${WORDPRESS_DB_NAME:-wordpress}
       WORDPRESS_TABLE_PREFIX: ${WORDPRESS_TABLE_PREFIX:-wp_}
       WORDPRESS_DEBUG: ${WORDPRESS_DEBUG:-false}
-      WORDPRESS_CONFIG_EXTRA: |
-        define('WP_SITEURL', '${WORDPRESS_URL}');
-        define('WP_HOME', '${WORDPRESS_URL}');
-        define('FS_METHOD', 'direct');
-        define('WP_MEMORY_LIMIT', '256M');
+      WORDPRESS_CONFIG_EXTRA: ${WORDPRESS_CONFIG_EXTRA}
     volumes:
       - wordpress_data:/var/www/html
       - ./mu-plugins:/var/www/html/wp-content/mu-plugins
@@ -30,7 +26,7 @@ services:
       MARIADB_DATABASE: ${WORDPRESS_DB_NAME:-wordpress}
       MARIADB_USER: ${WORDPRESS_DB_USER:-wordpress}
       MARIADB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
-      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     volumes:
       - db_data:/var/lib/mysql
     healthcheck:
@@ -39,6 +35,20 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+
+  phpmyadmin:
+    image: phpmyadmin:5.2-apache
+    restart: unless-stopped
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      UPLOAD_LIMIT: 128M
+    depends_on:
+      db:
+        condition: service_healthy
+    labels:
+      - coolify.managed=true
 
 volumes:
   wordpress_data:

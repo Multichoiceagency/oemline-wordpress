@@ -70,5 +70,60 @@ chown -R www-data:www-data /var/www/html/wp-content/plugins/advanced-custom-fiel
 
 echo "[OEMline] Sync complete"
 
+# ============================================================
+# Auto-install WordPress if not yet installed
+# Runs after the default entrypoint sets up wp-config.php
+# ============================================================
+
+# We need to run this after Apache starts, so use a background job
+(
+  echo "[OEMline] Waiting for WordPress to be ready for auto-install..."
+  sleep 20
+
+  WP_CLI="wp --allow-root --path=/var/www/html"
+
+  # Wait until wp-config.php exists (set by docker-entrypoint.sh)
+  for i in $(seq 1 30); do
+    if [ -f /var/www/html/wp-config.php ]; then
+      break
+    fi
+    echo "[OEMline] Waiting for wp-config.php... ($i/30)"
+    sleep 5
+  done
+
+  if [ ! -f /var/www/html/wp-config.php ]; then
+    echo "[OEMline] ERROR: wp-config.php never appeared, skipping auto-install"
+    exit 0
+  fi
+
+  # Check if WordPress is already installed
+  if $WP_CLI core is-installed 2>/dev/null; then
+    echo "[OEMline] WordPress already installed — skipping"
+    # Flush rewrite rules on every startup (fixes permalink 404s)
+    $WP_CLI rewrite flush 2>/dev/null || true
+  else
+    echo "[OEMline] Installing WordPress..."
+    ADMIN_PASS="${WP_ADMIN_PASSWORD:-$(openssl rand -base64 16)}"
+    $WP_CLI core install \
+      --url="https://wp.oemline.eu" \
+      --title="OEMline" \
+      --admin_user="${WP_ADMIN_USER:-admin}" \
+      --admin_password="$ADMIN_PASS" \
+      --admin_email="${WP_ADMIN_EMAIL:-admin@oemline.eu}" \
+      --skip-email 2>&1
+
+    echo "[OEMline] WordPress installed! Admin: ${WP_ADMIN_USER:-admin} / $ADMIN_PASS"
+
+    # Set permalink structure to /%postname%/
+    $WP_CLI rewrite structure '/%postname%/' --hard 2>/dev/null || true
+    $WP_CLI rewrite flush 2>/dev/null || true
+
+    # Activate our theme
+    $WP_CLI theme activate oemline-headless 2>/dev/null || true
+
+    echo "[OEMline] Base install complete. MU-plugins will handle plugin activation."
+  fi
+) &
+
 # Call the original WordPress entrypoint
 exec docker-entrypoint.sh "$@"

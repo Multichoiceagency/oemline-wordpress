@@ -496,21 +496,66 @@ add_action('rest_api_init', function () {
             $order->save();
 
             // Try to get payment URL via gateway process_payment()
-            WC()->payment_gateways(); // ensure gateways are loaded
+            // Ensure WC frontend is fully initialized for payment gateways
+            if (!did_action('woocommerce_init')) {
+                WC()->frontend_includes();
+            }
+            WC()->payment_gateways()->init();
             $all_gateways = WC()->payment_gateways()->payment_gateways();
+
             if (isset($all_gateways[$payment_method])) {
                 try {
                     $gateway = $all_gateways[$payment_method];
+                    $gateway->init_settings();
                     $result = $gateway->process_payment($order->get_id());
-                    if ($result && isset($result['redirect']) && !empty($result['redirect'])) {
+                    if (is_array($result) && !empty($result['redirect'])) {
                         $payment_url = $result['redirect'];
                     }
-                } catch (Exception $e) {
-                    // fallback below
+                } catch (Throwable $e) {
+                    error_log('[OEMLine Checkout] process_payment error: ' . $e->getMessage());
                 }
             }
 
-            // Fallback: use WooCommerce pay page URL
+            // Fallback: direct Mollie API call to get checkout URL
+            if (empty($payment_url) && strpos($payment_method, 'mollie') !== false) {
+                $mollie_key = defined('MOLLIE_API_KEY') ? MOLLIE_API_KEY : getenv('MOLLIE_API_KEY');
+                if ($mollie_key) {
+                    $method_map = [
+                        'mollie_wc_gateway_ideal'        => 'ideal',
+                        'mollie_wc_gateway_banktransfer'  => 'banktransfer',
+                        'mollie_wc_gateway_creditcard'    => 'creditcard',
+                        'mollie_wc_gateway_bancontact'    => 'bancontact',
+                        'mollie_wc_gateway_paybybank'     => 'paybybank',
+                        'mollie_wc_gateway_in3'           => 'in3',
+                    ];
+                    $mollie_method = $method_map[$payment_method] ?? 'ideal';
+                    $storefront_url = defined('STOREFRONT_URL') ? STOREFRONT_URL : getenv('STOREFRONT_URL') ?: 'https://oemline.eu';
+                    $ch = curl_init('https://api.mollie.com/v2/payments');
+                    curl_setopt_array($ch, [
+                        CURLOPT_RETURNTRANSFER => true,
+                        CURLOPT_POST           => true,
+                        CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $mollie_key, 'Content-Type: application/json'],
+                        CURLOPT_POSTFIELDS     => json_encode([
+                            'amount'      => ['currency' => $order->get_currency(), 'value' => number_format($order->get_total(), 2, '.', '')],
+                            'description' => 'Bestelling #' . $order->get_order_number(),
+                            'method'      => $mollie_method,
+                            'redirectUrl' => $storefront_url . '/checkout/success?order=' . $order->get_order_number() . '&key=' . $order->get_order_key(),
+                            'webhookUrl'  => home_url('/wp-json/oemline/v1/mollie-webhook'),
+                            'metadata'    => ['order_id' => $order->get_id()],
+                        ]),
+                    ]);
+                    $response = curl_exec($ch);
+                    curl_close($ch);
+                    $mollie_data = json_decode($response, true);
+                    if (!empty($mollie_data['_links']['checkout']['href'])) {
+                        $payment_url = $mollie_data['_links']['checkout']['href'];
+                        $order->update_meta_data('_mollie_payment_id', $mollie_data['id'] ?? '');
+                        $order->save();
+                    }
+                }
+            }
+
+            // Final fallback: WooCommerce pay page
             if (empty($payment_url)) {
                 $payment_url = $order->get_checkout_payment_url(true);
             }

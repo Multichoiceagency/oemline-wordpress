@@ -22,6 +22,29 @@ add_action('after_setup_theme', function () {
     }
 }, 1);
 
+// Skip WooCommerce setup wizard and onboarding redirects
+add_filter('woocommerce_prevent_automatic_wizard_redirect', '__return_true');
+add_action('admin_init', function () {
+    // Suppress WooCommerce setup wizard redirect
+    delete_transient('_wc_activation_redirect');
+    // Mark setup wizard and onboarding as completed
+    if (get_option('woocommerce_setup_wizard_run') !== 'yes') {
+        update_option('woocommerce_setup_wizard_run', 'yes');
+    }
+    if (!get_option('woocommerce_onboarding_opt_in')) {
+        update_option('woocommerce_onboarding_opt_in', 'no');
+    }
+    if (get_option('wc_setup_wizard_finished') !== 'yes') {
+        update_option('wc_setup_wizard_finished', 'yes');
+    }
+    // Suppress WooCommerce admin notices about setup
+    delete_option('woocommerce_show_marketplace_suggestions');
+    // Mark task list as completed to suppress onboarding task list
+    if (!get_option('woocommerce_task_list_hidden')) {
+        update_option('woocommerce_task_list_hidden', 'yes');
+    }
+});
+
 // Auto-activate required plugins
 add_action('admin_init', function () {
     // Prefer ACF PRO if installed, fallback to ACF Free

@@ -433,7 +433,49 @@ add_action('rest_api_init', function () {
             }
 
             $updated = get_fields($slug) ?: (object) [];
+
+            // Notify storefront to revalidate homepage cache
+            oemline_acf_notify_storefront($slug);
+
             return new WP_REST_Response($updated, 200);
         },
     ]);
 });
+
+// ============================================================
+// 4. REVALIDATION HELPER
+// Pings the Next.js storefront webhook when ACF options change.
+// ============================================================
+function oemline_acf_notify_storefront(string $slug): void {
+    $storefront_url = defined('STOREFRONT_URL') ? STOREFRONT_URL : (getenv('STOREFRONT_URL') ?: 'https://oemline.eu');
+    $webhook_secret = defined('WORDPRESS_WEBHOOK_SECRET') ? WORDPRESS_WEBHOOK_SECRET : (getenv('WORDPRESS_WEBHOOK_SECRET') ?: '');
+
+    if (empty($webhook_secret)) {
+        return;
+    }
+
+    wp_remote_post($storefront_url . '/api/wordpress/webhook', [
+        'timeout'     => 5,
+        'blocking'    => false,
+        'headers'     => [
+            'Content-Type'     => 'application/json',
+            'x-webhook-secret' => $webhook_secret,
+        ],
+        'body' => wp_json_encode([
+            'contentType' => $slug === 'homepage' ? 'homepage' : 'options',
+            'contentId'   => $slug,
+        ]),
+    ]);
+}
+
+// Also fire when ACF saves options pages directly in the WP admin
+add_action('acf/save_post', function ($post_id) {
+    if (!is_string($post_id)) {
+        return;
+    }
+    // ACF options page post_id is the slug string
+    $allowed = ['homepage', 'header', 'footer', 'site-settings', 'theme-settings', 'klantenservice', 'product-page-config', 'cart-page-config'];
+    if (in_array($post_id, $allowed, true)) {
+        oemline_acf_notify_storefront($post_id);
+    }
+}, 20);

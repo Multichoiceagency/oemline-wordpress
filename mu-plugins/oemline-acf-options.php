@@ -363,6 +363,115 @@ add_action('acf/init', function () {
             [['param' => 'options_page', 'operator' => '==', 'value' => 'homepage']],
         ],
     ]);
+
+    // ── PRODUCT PAGE CONFIG ─────────────────────────────────────────────
+    $section_sub_fields = [
+        [
+            'key' => 'field_pp_sec_type', 'label' => 'Section Type', 'name' => 'section_type', 'type' => 'select',
+            'choices' => [
+                'product_showcase'       => 'Product Showcase',
+                'customers_also_ordered' => 'Customers Also Ordered',
+                'related_products'       => 'Related Products',
+                'featured_products'      => 'Featured Products',
+            ],
+            'default_value' => 'product_showcase',
+        ],
+        ['key' => 'field_pp_sec_enabled', 'label' => 'Enabled',      'name' => 'enabled',      'type' => 'true_false', 'default_value' => 1],
+        ['key' => 'field_pp_sec_title',   'label' => 'Title',        'name' => 'title',         'type' => 'text'],
+        [
+            'key' => 'field_pp_sec_layout', 'label' => 'Layout', 'name' => 'layout', 'type' => 'select',
+            'choices' => ['carousel' => 'Carousel', 'grid' => 'Grid'],
+            'default_value' => 'carousel',
+        ],
+        ['key' => 'field_pp_sec_max', 'label' => 'Max Products', 'name' => 'max_products', 'type' => 'number', 'default_value' => 8],
+        [
+            'key' => 'field_pp_sec_src', 'label' => 'Product Source', 'name' => 'product_source', 'type' => 'select',
+            'choices' => [
+                'auto'        => 'Auto (category-related)',
+                'category'    => 'Specific WooCommerce Category',
+                'manual'      => 'Manually Selected Products',
+                'bestsellers' => 'Bestsellers',
+                'newest'      => 'Newest Products',
+                'sale'        => 'Sale Products',
+            ],
+            'default_value' => 'auto',
+        ],
+        [
+            'key'              => 'field_pp_sec_wc_cat',
+            'label'            => 'WooCommerce Category',
+            'name'             => 'wc_category_id',
+            'type'             => 'taxonomy',
+            'taxonomy'         => 'product_cat',
+            'field_type'       => 'select',
+            'allow_null'       => 1,
+            'return_format'    => 'id',
+            'instructions'     => 'Choose a WooCommerce product category. Only used when Product Source = "Specific WooCommerce Category".',
+            'conditional_logic' => [[['field' => 'field_pp_sec_src', 'operator' => '==', 'value' => 'category']]],
+        ],
+        [
+            'key'              => 'field_pp_sec_wc_products',
+            'label'            => 'WooCommerce Products',
+            'name'             => 'wc_product_ids',
+            'type'             => 'post_object',
+            'post_type'        => ['product'],
+            'multiple'         => 1,
+            'return_format'    => 'id',
+            'allow_null'       => 1,
+            'instructions'     => 'Select specific products to display. Only used when Product Source = "Manually Selected Products".',
+            'conditional_logic' => [[['field' => 'field_pp_sec_src', 'operator' => '==', 'value' => 'manual']]],
+        ],
+    ];
+
+    acf_add_local_field_group([
+        'key'    => 'group_product_page_config',
+        'title'  => 'Product Page Config',
+        'fields' => [
+            ['key' => 'field_pp_usp_1',              'label' => 'USP 1',              'name' => 'usp_1',              'type' => 'text', 'placeholder' => 'Op werkdagen voor 21:00 besteld, morgen in huis'],
+            ['key' => 'field_pp_usp_2',              'label' => 'USP 2',              'name' => 'usp_2',              'type' => 'text', 'placeholder' => '30 dagen gratis ruilen'],
+            ['key' => 'field_pp_usp_3',              'label' => 'USP 3',              'name' => 'usp_3',              'type' => 'text', 'placeholder' => 'Klanten geven ons een 8.6/10'],
+            ['key' => 'field_pp_show_sku',            'label' => 'Show SKU',           'name' => 'show_sku',            'type' => 'true_false', 'default_value' => 1],
+            ['key' => 'field_pp_tab_desc_label',      'label' => 'Tab: Description',   'name' => 'tab_description_label', 'type' => 'text', 'default_value' => 'Beschrijving'],
+            ['key' => 'field_pp_tab_specs_label',     'label' => 'Tab: Specs',         'name' => 'tab_specs_label',     'type' => 'text', 'default_value' => 'Specificaties'],
+            ['key' => 'field_pp_tab_reviews_label',   'label' => 'Tab: Reviews',       'name' => 'tab_reviews_label',   'type' => 'text', 'default_value' => 'Reviews'],
+            ['key' => 'field_pp_show_related',        'label' => 'Show Related',       'name' => 'show_related_products', 'type' => 'true_false', 'default_value' => 1],
+            ['key' => 'field_pp_show_reviews',        'label' => 'Show Reviews',       'name' => 'show_reviews',        'type' => 'true_false', 'default_value' => 1],
+            ['key' => 'field_pp_show_stock',          'label' => 'Show Stock Status',  'name' => 'show_stock_status',   'type' => 'true_false', 'default_value' => 1],
+            ['key' => 'field_pp_breadcrumb',          'label' => 'Breadcrumb',         'name' => 'breadcrumb_enabled',  'type' => 'true_false', 'default_value' => 1],
+            ['key' => 'field_pp_show_brand_logo',     'label' => 'Show Brand Logo',    'name' => 'show_brand_logo',     'type' => 'true_false', 'default_value' => 1],
+            [
+                'key'          => 'field_pp_below_sections',
+                'label'        => 'Sections Below Product',
+                'name'         => 'below_product_sections',
+                'type'         => 'repeater',
+                'button_label' => 'Add Section',
+                'sub_fields'   => $section_sub_fields,
+            ],
+            [
+                'key'          => 'field_pp_sidebar_sections',
+                'label'        => 'Sidebar Sections',
+                'name'         => 'sidebar_sections',
+                'type'         => 'repeater',
+                'button_label' => 'Add Section',
+                'sub_fields'   => $section_sub_fields,
+            ],
+        ],
+        'location' => [
+            [['param' => 'options_page', 'operator' => '==', 'value' => 'product-page-config']],
+        ],
+    ]);
+
+    // ── CART PAGE CONFIG ────────────────────────────────────────────────
+    acf_add_local_field_group([
+        'key'    => 'group_cart_page_config',
+        'title'  => 'Cart Page Config',
+        'fields' => [
+            ['key' => 'field_cart_promo_banner',   'label' => 'Promo Banner Text', 'name' => 'promo_banner', 'type' => 'text'],
+            ['key' => 'field_cart_cross_sell',      'label' => 'Show Cross-sell',   'name' => 'cross_sell',   'type' => 'true_false', 'default_value' => 1],
+        ],
+        'location' => [
+            [['param' => 'options_page', 'operator' => '==', 'value' => 'cart-page-config']],
+        ],
+    ]);
 });
 
 // ============================================================

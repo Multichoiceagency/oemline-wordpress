@@ -49,9 +49,12 @@ add_action('acf/init', function () {
     }
 
     $product_source_choices = [
-        'dashboard' => 'Dashboard',
-        'woocommerce' => 'WooCommerce',
-        'manual' => 'Manual',
+        'dashboard'    => 'Dashboard',
+        'woocommerce'  => 'WooCommerce',
+        'manual'       => 'Manual',
+        'bestsellers'  => 'Bestsellers',
+        'newest'       => 'Nieuwste producten',
+        'sale'         => 'Aanbieding producten',
     ];
 
     // ── HOMEPAGE FLEXIBLE CONTENT ──
@@ -255,9 +258,46 @@ add_action('acf/init', function () {
                             ['key' => 'field_hp_ps_subtitle', 'label' => 'Subtitle',      'name' => 'subtitle',      'type' => 'text'],
                             ['key' => 'field_hp_ps_bg_image', 'label' => 'Background Image', 'name' => 'background_image', 'type' => 'image', 'return_format' => 'url'],
                             ['key' => 'field_hp_ps_source',   'label' => 'Product Source','name' => 'product_source','type' => 'select',     'choices' => $product_source_choices, 'default_value' => 'dashboard'],
-                            ['key' => 'field_hp_ps_cat_id',   'label' => 'Dashboard Category ID',  'name' => 'dashboard_category_id',  'type' => 'number'],
-                            ['key' => 'field_hp_ps_brand',    'label' => 'Dashboard Brand Code',   'name' => 'dashboard_brand_code',   'type' => 'text'],
-                            ['key' => 'field_hp_ps_articles', 'label' => 'Article Numbers (comma-separated)', 'name' => 'manual_article_numbers', 'type' => 'text'],
+                            // Dashboard fields (shown when source = dashboard)
+                            [
+                                'key' => 'field_hp_ps_cat_id', 'label' => 'Dashboard Category ID', 'name' => 'dashboard_category_id', 'type' => 'number',
+                                'conditional_logic' => [[['field' => 'field_hp_ps_source', 'operator' => '==', 'value' => 'dashboard']]],
+                            ],
+                            [
+                                'key' => 'field_hp_ps_brand', 'label' => 'Dashboard Brand Code', 'name' => 'dashboard_brand_code', 'type' => 'text',
+                                'conditional_logic' => [[['field' => 'field_hp_ps_source', 'operator' => '==', 'value' => 'dashboard']]],
+                            ],
+                            // WooCommerce category selector (shown when source = woocommerce)
+                            [
+                                'key'              => 'field_hp_ps_wc_cat',
+                                'label'            => 'WooCommerce Categorie',
+                                'name'             => 'wc_category_id',
+                                'type'             => 'taxonomy',
+                                'taxonomy'         => 'product_cat',
+                                'field_type'       => 'select',
+                                'allow_null'       => 1,
+                                'return_format'    => 'id',
+                                'instructions'     => 'Kies een productcategorie om producten uit te laden.',
+                                'conditional_logic' => [[['field' => 'field_hp_ps_source', 'operator' => '==', 'value' => 'woocommerce']]],
+                            ],
+                            // WooCommerce product selector (shown when source = manual)
+                            [
+                                'key'              => 'field_hp_ps_wc_products',
+                                'label'            => 'WooCommerce Producten',
+                                'name'             => 'wc_product_ids',
+                                'type'             => 'post_object',
+                                'post_type'        => ['product'],
+                                'multiple'         => 1,
+                                'return_format'    => 'id',
+                                'allow_null'       => 1,
+                                'instructions'     => 'Selecteer specifieke producten om te tonen.',
+                                'conditional_logic' => [[['field' => 'field_hp_ps_source', 'operator' => '==', 'value' => 'manual']]],
+                            ],
+                            // Legacy: article numbers (hidden, for backward compat)
+                            [
+                                'key' => 'field_hp_ps_articles', 'label' => 'Article Numbers (comma-separated)', 'name' => 'manual_article_numbers', 'type' => 'text',
+                                'conditional_logic' => [[['field' => 'field_hp_ps_source', 'operator' => '==', 'value' => 'dashboard']]],
+                            ],
                             ['key' => 'field_hp_ps_va_link',  'label' => 'View All Link', 'name' => 'view_all_link', 'type' => 'url'],
                             ['key' => 'field_hp_ps_max',      'label' => 'Max Products',  'name' => 'max_products',  'type' => 'number',     'default_value' => 12],
                         ],
@@ -281,9 +321,42 @@ add_action('acf/init', function () {
                                 'sub_fields' => [
                                     ['key' => 'field_hp_pc_c_title',    'label' => 'Title',          'name' => 'title',                   'type' => 'text'],
                                     ['key' => 'field_hp_pc_c_source',   'label' => 'Source',         'name' => 'product_source',          'type' => 'select', 'choices' => $product_source_choices, 'default_value' => 'dashboard'],
-                                    ['key' => 'field_hp_pc_c_cat_id',   'label' => 'Category ID',    'name' => 'dashboard_category_id',   'type' => 'number'],
-                                    ['key' => 'field_hp_pc_c_brand',    'label' => 'Brand Code',     'name' => 'dashboard_brand_code',    'type' => 'text'],
-                                    ['key' => 'field_hp_pc_c_articles', 'label' => 'Article Numbers','name' => 'manual_article_numbers',  'type' => 'text'],
+                                    [
+                                        'key' => 'field_hp_pc_c_cat_id', 'label' => 'Dashboard Category ID', 'name' => 'dashboard_category_id', 'type' => 'number',
+                                        'conditional_logic' => [[['field' => 'field_hp_pc_c_source', 'operator' => '==', 'value' => 'dashboard']]],
+                                    ],
+                                    [
+                                        'key' => 'field_hp_pc_c_brand', 'label' => 'Dashboard Brand Code', 'name' => 'dashboard_brand_code', 'type' => 'text',
+                                        'conditional_logic' => [[['field' => 'field_hp_pc_c_source', 'operator' => '==', 'value' => 'dashboard']]],
+                                    ],
+                                    [
+                                        'key'              => 'field_hp_pc_c_wc_cat',
+                                        'label'            => 'WooCommerce Categorie',
+                                        'name'             => 'wc_category_id',
+                                        'type'             => 'taxonomy',
+                                        'taxonomy'         => 'product_cat',
+                                        'field_type'       => 'select',
+                                        'allow_null'       => 1,
+                                        'return_format'    => 'id',
+                                        'instructions'     => 'Kies een WooCommerce productcategorie.',
+                                        'conditional_logic' => [[['field' => 'field_hp_pc_c_source', 'operator' => '==', 'value' => 'woocommerce']]],
+                                    ],
+                                    [
+                                        'key'              => 'field_hp_pc_c_wc_products',
+                                        'label'            => 'WooCommerce Producten',
+                                        'name'             => 'wc_product_ids',
+                                        'type'             => 'post_object',
+                                        'post_type'        => ['product'],
+                                        'multiple'         => 1,
+                                        'return_format'    => 'id',
+                                        'allow_null'       => 1,
+                                        'instructions'     => 'Selecteer specifieke producten.',
+                                        'conditional_logic' => [[['field' => 'field_hp_pc_c_source', 'operator' => '==', 'value' => 'manual']]],
+                                    ],
+                                    [
+                                        'key' => 'field_hp_pc_c_articles', 'label' => 'Article Numbers', 'name' => 'manual_article_numbers', 'type' => 'text',
+                                        'conditional_logic' => [[['field' => 'field_hp_pc_c_source', 'operator' => '==', 'value' => 'dashboard']]],
+                                    ],
                                 ],
                             ],
                             ['key' => 'field_hp_pc_max', 'label' => 'Max Per Column', 'name' => 'max_per_column', 'type' => 'number', 'default_value' => 6],

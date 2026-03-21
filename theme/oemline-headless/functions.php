@@ -48,84 +48,9 @@ add_action('init', function () {
 });
 
 // ============================================================
-// 2. ACF OPTIONS PAGES (replaces Payload Globals)
+// 2. ACF OPTIONS PAGES — registered in mu-plugins/oemline-acf-options.php
+//    (removed from theme to prevent duplicate menu items)
 // ============================================================
-if (function_exists('acf_add_options_page')) {
-
-    // Parent page
-    acf_add_options_page([
-        'page_title'  => 'OEMline Instellingen',
-        'menu_title'  => 'OEMline',
-        'menu_slug'   => 'oemline-settings',
-        'capability'  => 'manage_options',
-        'icon_url'    => 'dashicons-store',
-        'redirect'    => true,
-    ]);
-
-    // Site Settings
-    acf_add_options_sub_page([
-        'page_title'  => 'Site Settings',
-        'menu_title'  => 'Site Settings',
-        'menu_slug'   => 'site-settings',
-        'parent_slug' => 'oemline-settings',
-    ]);
-
-    // Theme Settings
-    acf_add_options_sub_page([
-        'page_title'  => 'Theme Settings',
-        'menu_title'  => 'Theme',
-        'menu_slug'   => 'theme-settings',
-        'parent_slug' => 'oemline-settings',
-    ]);
-
-    // Homepage
-    acf_add_options_sub_page([
-        'page_title'  => 'Homepage',
-        'menu_title'  => 'Homepage',
-        'menu_slug'   => 'homepage',
-        'parent_slug' => 'oemline-settings',
-    ]);
-
-    // Header
-    acf_add_options_sub_page([
-        'page_title'  => 'Header',
-        'menu_title'  => 'Header',
-        'menu_slug'   => 'header',
-        'parent_slug' => 'oemline-settings',
-    ]);
-
-    // Footer
-    acf_add_options_sub_page([
-        'page_title'  => 'Footer',
-        'menu_title'  => 'Footer',
-        'menu_slug'   => 'footer',
-        'parent_slug' => 'oemline-settings',
-    ]);
-
-    // Klantenservice
-    acf_add_options_sub_page([
-        'page_title'  => 'Klantenservice',
-        'menu_title'  => 'Klantenservice',
-        'menu_slug'   => 'klantenservice',
-        'parent_slug' => 'oemline-settings',
-    ]);
-
-    // Product Page Config
-    acf_add_options_sub_page([
-        'page_title'  => 'Product Page Config',
-        'menu_title'  => 'Product Page',
-        'menu_slug'   => 'product-page-config',
-        'parent_slug' => 'oemline-settings',
-    ]);
-
-    // Cart Page Config
-    acf_add_options_sub_page([
-        'page_title'  => 'Cart Page Config',
-        'menu_title'  => 'Cart Page',
-        'menu_slug'   => 'cart-page-config',
-        'parent_slug' => 'oemline-settings',
-    ]);
-}
 
 // ============================================================
 // 3. CUSTOM POST TYPES (replaces Payload Collections)

@@ -366,43 +366,94 @@ add_action('acf/init', function () {
 });
 
 // ============================================================
-// 3. REST API — GET /oemline/v1/options/:slug
-//    Returns all ACF fields saved for the given options page slug.
-//    GET  /wp-json/oemline/v1/options/homepage
-//    GET  /wp-json/oemline/v1/options/header
-//    GET  /wp-json/oemline/v1/options/footer
-//    GET  /wp-json/oemline/v1/options/site-settings
-//    PUT  /wp-json/oemline/v1/options/:slug  (auth required)
+// 3. FIELD MAP — maps each options-page slug to its ACF field names.
+//    All fields are stored under the 'options' post ID in ACF.
+// ============================================================
+function oemline_get_options_field_map(): array {
+    return [
+        'site-settings' => [
+            'site_name', 'site_tagline', 'phone', 'email',
+            'address', 'city', 'country', 'hours',
+            'company_name', 'company_legal_name',
+            'companyName', 'companyLegalName',
+            'social_media',
+            'facebook', 'twitter', 'instagram', 'youtube', 'linkedin',
+            'contact_info', 'business_hours',
+        ],
+        'header' => [
+            'announcement_bar', 'top_bar', 'main_nav',
+            'shipping_badge', 'mobile_menu',
+        ],
+        'footer' => [
+            'newsletter', 'contact_section', 'categories_section',
+            'information_section', 'bottom_bar', 'payment_logos',
+            'use_menu_system', 'menu_columns', 'mobile_accordion',
+        ],
+        'homepage' => [
+            'sections', 'seo',
+        ],
+        'theme-settings' => [
+            'primary_color', 'accent_color', 'text_color', 'bg_color',
+            'logo_url', 'favicon_url',
+        ],
+        'klantenservice' => [
+            'sidebar_title', 'categories', 'contact_title', 'contact_methods',
+            'trust_badges', 'quick_actions', 'chatbot', 'notice',
+            'extra_sidebar_items',
+        ],
+        'product-page-config' => [
+            'usp_1', 'usp_2', 'usp_3', 'show_sku',
+            'tab_description_label', 'tab_specs_label', 'tab_reviews_label',
+            'show_related_products', 'show_reviews', 'show_stock_status',
+            'breadcrumb_enabled', 'show_brand_logo',
+            'below_product_sections', 'sidebar_sections',
+            'labels', 'tabs',
+        ],
+        'cart-page-config' => [
+            'promo_banner', 'cross_sell', 'labels',
+        ],
+    ];
+}
+
+// ============================================================
+// 4. REST API — GET/PUT /oemline/v1/options/:slug
+//    Reads individual ACF fields from the 'options' post ID
+//    and groups them by the requested slug.
 // ============================================================
 add_action('rest_api_init', function () {
 
-    // Allowed options page slugs
-    $allowed_slugs = [
-        'homepage', 'header', 'footer', 'site-settings',
-        'theme-settings', 'klantenservice', 'product-page-config', 'cart-page-config',
-    ];
+    $field_map = oemline_get_options_field_map();
+    $allowed_slugs = array_keys($field_map);
 
     // GET — public read
     register_rest_route('oemline/v1', '/options/(?P<slug>[a-z0-9\-]+)', [
         'methods'             => 'GET',
         'permission_callback' => '__return_true',
-        'callback'            => function (WP_REST_Request $request) use ($allowed_slugs) {
+        'callback'            => function (WP_REST_Request $request) use ($field_map, $allowed_slugs) {
             $slug = sanitize_text_field($request->get_param('slug'));
 
             if (!in_array($slug, $allowed_slugs, true)) {
                 return new WP_REST_Response(['error' => 'Unknown options page'], 404);
             }
 
-            if (!function_exists('get_fields')) {
+            if (!function_exists('get_field')) {
                 return new WP_REST_Response(['error' => 'ACF not available'], 503);
             }
 
-            $fields = get_fields($slug);
-            if (empty($fields)) {
-                $fields = (object) [];
+            $fields = $field_map[$slug];
+            $result = [];
+
+            foreach ($fields as $field_name) {
+                $value = get_field($field_name, 'options');
+                if ($value !== null && $value !== false && $value !== '') {
+                    $result[$field_name] = $value;
+                }
             }
 
-            return new WP_REST_Response($fields, 200);
+            return new WP_REST_Response(
+                empty($result) ? (object) [] : $result,
+                200
+            );
         },
     ]);
 
@@ -412,7 +463,7 @@ add_action('rest_api_init', function () {
         'permission_callback' => function () {
             return current_user_can('manage_options');
         },
-        'callback'            => function (WP_REST_Request $request) use ($allowed_slugs) {
+        'callback'            => function (WP_REST_Request $request) use ($field_map, $allowed_slugs) {
             $slug = sanitize_text_field($request->get_param('slug'));
 
             if (!in_array($slug, $allowed_slugs, true)) {
@@ -428,16 +479,28 @@ add_action('rest_api_init', function () {
                 return new WP_REST_Response(['error' => 'Invalid JSON body'], 400);
             }
 
+            $allowed_fields = $field_map[$slug];
             foreach ($body as $field_name => $value) {
-                update_field($field_name, $value, $slug);
+                if (in_array($field_name, $allowed_fields, true)) {
+                    update_field($field_name, $value, 'options');
+                }
             }
 
-            $updated = get_fields($slug) ?: (object) [];
+            // Read back updated values
+            $result = [];
+            foreach ($allowed_fields as $field_name) {
+                $value = get_field($field_name, 'options');
+                if ($value !== null && $value !== false && $value !== '') {
+                    $result[$field_name] = $value;
+                }
+            }
 
-            // Notify storefront to revalidate homepage cache
             oemline_acf_notify_storefront($slug);
 
-            return new WP_REST_Response($updated, 200);
+            return new WP_REST_Response(
+                empty($result) ? (object) [] : $result,
+                200
+            );
         },
     ]);
 });

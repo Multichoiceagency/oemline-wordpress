@@ -195,8 +195,7 @@ add_action('init', function () {
         'featured-product'   => ['name' => 'Featured Products',  'singular' => 'Featured Product',  'icon' => 'dashicons-star-filled',  'rest_base' => 'featured-products'],
         'featured-category'  => ['name' => 'Featured Categories','singular' => 'Featured Category', 'icon' => 'dashicons-category',     'rest_base' => 'featured-categories'],
         'price-request'      => ['name' => 'Price Requests',     'singular' => 'Price Request',     'icon' => 'dashicons-tag',          'rest_base' => 'price-requests'],
-        'product-override'   => ['name' => 'Product Overrides',  'singular' => 'Product Override',  'icon' => 'dashicons-edit-page',    'rest_base' => 'product-overrides'],
-        'product-extension'  => ['name' => 'Product Extensions', 'singular' => 'Product Extension', 'icon' => 'dashicons-admin-plugins', 'rest_base' => 'product-extensions'],
+        // product-override and product-extension removed — not used in frontend
     ];
 
     foreach ($cpts as $slug => $config) {

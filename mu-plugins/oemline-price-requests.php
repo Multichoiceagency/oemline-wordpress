@@ -231,8 +231,15 @@ function oemline_handle_price_request( WP_REST_Request $request ) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function oemline_notify_admin_price_request( int $post_id, array $fields ): void {
-    $admin_email = get_option( 'admin_email' );
-    if ( ! $admin_email ) return;
+    $notification_email = sanitize_email(
+        getenv( 'OEMLINE_NOTIFICATION_EMAIL' )
+        ?: getenv( 'SMTP_FROM_EMAIL' )
+        ?: 'info@oemline.eu'
+    );
+    if ( ! $notification_email ) {
+        $notification_email = get_option( 'admin_email' );
+    }
+    if ( ! $notification_email ) return;
 
     $subject = sprintf( '[OEMLine] Nieuwe prijsaanvraag: %s', $fields['article_number'] ?: $fields['product_name'] );
 
@@ -251,5 +258,5 @@ function oemline_notify_admin_price_request( int $post_id, array $fields ): void
     $body .= "\n";
     $body .= 'Bekijk aanvraag: ' . admin_url( "post.php?post={$post_id}&action=edit" ) . "\n";
 
-    wp_mail( $admin_email, $subject, $body );
+    wp_mail( $notification_email, $subject, $body );
 }

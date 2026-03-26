@@ -394,6 +394,35 @@ add_action('rest_api_init', function () {
 });
 
 // ============================================================
+// 7. ORDER META DISPLAY (ADMIN + EMAIL)
+// ============================================================
+add_action('woocommerce_admin_order_data_after_billing_address', function ($order) {
+    if (!$order instanceof WC_Order) return;
+    $kenteken = $order->get_meta('kenteken');
+    if (!$kenteken) {
+        $kenteken = $order->get_meta('license_plate');
+    }
+    if ($kenteken) {
+        echo '<p><strong>Kenteken:</strong> ' . esc_html($kenteken) . '</p>';
+    }
+}, 10, 1);
+
+add_filter('woocommerce_email_order_meta_fields', function ($fields, $sent_to_admin, $order) {
+    if (!$order instanceof WC_Order) return $fields;
+    $kenteken = $order->get_meta('kenteken');
+    if (!$kenteken) {
+        $kenteken = $order->get_meta('license_plate');
+    }
+    if ($kenteken) {
+        $fields['kenteken'] = [
+            'label' => __('Kenteken', 'oemline'),
+            'value' => $kenteken,
+        ];
+    }
+    return $fields;
+}, 10, 3);
+
+// ============================================================
 // 3. WOOCOMMERCE CHECKOUT VIA REST API
 // ============================================================
 add_action('rest_api_init', function () {
@@ -412,6 +441,12 @@ add_action('rest_api_init', function () {
             $payment_method = sanitize_text_field($request->get_param('payment_method') ?: 'mollie_wc_gateway_ideal');
             $customer_note  = sanitize_textarea_field($request->get_param('customer_note') ?: '');
             $coupon_code    = sanitize_text_field($request->get_param('coupon_code') ?: '');
+            $vehicle_data   = $request->get_param('vehicle_data') ?: [];
+            $kenteken_raw   = $request->get_param('kenteken') ?: $request->get_param('license_plate');
+            $vehicle_plate  = sanitize_text_field(
+                $kenteken_raw
+                ?: ($request->get_param('vehicle_kenteken') ?: ($vehicle_data['kenteken'] ?? ''))
+            );
 
             if (empty($items)) {
                 return new WP_REST_Response(['error' => 'Winkelwagen is leeg'], 400);
@@ -436,12 +471,25 @@ add_action('rest_api_init', function () {
                 $article_no   = sanitize_text_field($item['article_no'] ?? '');
                 $image        = esc_url_raw($item['image'] ?? '');
                 $brand        = sanitize_text_field($item['brand'] ?? '');
+                $input_product_id = absint($item['product_id'] ?? 0);
 
-                // Try to find WC product by SKU, or create a fee item
-                $product_id = $sku ? wc_get_product_id_by_sku($sku) : 0;
+                // Prefer provided product_id from frontend; fallback to SKU lookup.
+                $product_id = $input_product_id ?: ($sku ? wc_get_product_id_by_sku($sku) : 0);
 
                 if ($product_id) {
-                    $order->add_product(wc_get_product($product_id), $quantity);
+                    $added_item_id = $order->add_product(wc_get_product($product_id), $quantity);
+
+                    // Keep metadata available for admin/API exports.
+                    if ($added_item_id) {
+                        $order_item = $order->get_item($added_item_id);
+                        if ($order_item) {
+                            if ($sku) $order_item->add_meta_data('_sku', $sku, true);
+                            if ($article_no) $order_item->add_meta_data('_article_no', $article_no, true);
+                            if ($brand) $order_item->add_meta_data('_brand', $brand, true);
+                            if ($image) $order_item->add_meta_data('_product_image', $image, true);
+                            $order_item->save();
+                        }
+                    }
                 } else {
                     // Add as custom line item (Dashboard API product — no WC product needed)
                     $order_item = new WC_Order_Item_Product();
@@ -479,6 +527,23 @@ add_action('rest_api_init', function () {
             $order->set_payment_method($payment_method);
             if ($customer_note) {
                 $order->set_customer_note($customer_note);
+            }
+
+            // Vehicle / kenteken metadata
+            if (!empty($vehicle_plate)) {
+                $order->update_meta_data('kenteken', $vehicle_plate);
+                $order->update_meta_data('license_plate', $vehicle_plate);
+            }
+            if (!empty($vehicle_data) && is_array($vehicle_data)) {
+                if (!empty($vehicle_data['mfrName'])) {
+                    $order->update_meta_data('vehicle_mfr_name', sanitize_text_field($vehicle_data['mfrName']));
+                }
+                if (!empty($vehicle_data['modelName'])) {
+                    $order->update_meta_data('vehicle_model_name', sanitize_text_field($vehicle_data['modelName']));
+                }
+                if (!empty($vehicle_data['carName'])) {
+                    $order->update_meta_data('vehicle_name', sanitize_text_field($vehicle_data['carName']));
+                }
             }
 
             // Apply coupon

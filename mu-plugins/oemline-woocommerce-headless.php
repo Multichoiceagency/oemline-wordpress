@@ -483,6 +483,12 @@ add_action('wp_mail_failed', function ($wp_error) {
     error_log('[OEMLine Mail] wp_mail_failed: ' . $message . ' | data=' . wp_json_encode($data));
 });
 
+add_action('wp_mail_succeeded', function ($mail_data) {
+    $to = $mail_data['to'] ?? [];
+    $subject = $mail_data['subject'] ?? '';
+    error_log('[OEMLine Mail] wp_mail_succeeded: to=' . wp_json_encode($to) . ' | subject=' . $subject);
+});
+
 // ============================================================
 // 3. WOOCOMMERCE CHECKOUT VIA REST API
 // ============================================================

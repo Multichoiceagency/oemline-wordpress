@@ -986,6 +986,77 @@ add_action('rest_api_init', function () {
 // 6. MOLLIE PAYMENT WEBHOOK HANDLER
 // ============================================================
 add_action('rest_api_init', function () {
+    // POST /wp-json/oemline/v1/mollie-webhook
+    register_rest_route('oemline/v1', '/mollie-webhook', [
+        'methods'  => 'POST',
+        'callback' => function (WP_REST_Request $request) {
+            $payment_id = sanitize_text_field($request->get_param('id') ?: '');
+            if (empty($payment_id)) {
+                return new WP_REST_Response(['ok' => false, 'error' => 'Missing payment id'], 400);
+            }
+
+            $mollie_key = defined('MOLLIE_API_KEY') ? MOLLIE_API_KEY : getenv('MOLLIE_API_KEY');
+            if (empty($mollie_key)) {
+                error_log('[OEMLine Mollie] Missing MOLLIE_API_KEY');
+                return new WP_REST_Response(['ok' => false, 'error' => 'Missing API key'], 500);
+            }
+
+            $ch = curl_init('https://api.mollie.com/v2/payments/' . rawurlencode($payment_id));
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $mollie_key, 'Content-Type: application/json'],
+                CURLOPT_TIMEOUT        => 20,
+            ]);
+            $response = curl_exec($ch);
+            $curl_error = curl_error($ch);
+            curl_close($ch);
+
+            if ($curl_error) {
+                error_log('[OEMLine Mollie] cURL error: ' . $curl_error);
+                return new WP_REST_Response(['ok' => false, 'error' => 'cURL error'], 500);
+            }
+
+            $payment = json_decode($response, true);
+            if (empty($payment) || !is_array($payment)) {
+                error_log('[OEMLine Mollie] Invalid payment response for ' . $payment_id . ': ' . substr((string) $response, 0, 500));
+                return new WP_REST_Response(['ok' => false, 'error' => 'Invalid payment response'], 500);
+            }
+
+            $order_id = absint($payment['metadata']['order_id'] ?? 0);
+            if (!$order_id) {
+                error_log('[OEMLine Mollie] Missing order_id metadata for payment ' . $payment_id);
+                return new WP_REST_Response(['ok' => false, 'error' => 'Missing order_id metadata'], 400);
+            }
+
+            $order = wc_get_order($order_id);
+            if (!$order) {
+                error_log('[OEMLine Mollie] Order not found: ' . $order_id . ' for payment ' . $payment_id);
+                return new WP_REST_Response(['ok' => false, 'error' => 'Order not found'], 404);
+            }
+
+            $status = sanitize_text_field($payment['status'] ?? '');
+            $order->update_meta_data('_mollie_payment_id', $payment_id);
+            $order->update_meta_data('_mollie_payment_status', $status);
+
+            if ($status === 'paid') {
+                $order->payment_complete($payment_id);
+                $order->add_order_note('Mollie betaling geslaagd (' . $payment_id . ').');
+            } elseif (in_array($status, ['canceled', 'expired'], true)) {
+                $order->update_status('cancelled', 'Mollie betaling geannuleerd/verlopen (' . $payment_id . ').', true);
+            } elseif ($status === 'failed') {
+                $order->update_status('failed', 'Mollie betaling mislukt (' . $payment_id . ').', true);
+            } else {
+                // open / pending / authorized etc.
+                $order->add_order_note('Mollie status update: ' . $status . ' (' . $payment_id . ').');
+            }
+
+            $order->save();
+
+            return new WP_REST_Response(['ok' => true, 'order_id' => $order_id, 'status' => $status], 200);
+        },
+        'permission_callback' => '__return_true',
+    ]);
+
     // GET /wp-json/oemline/v1/order-status/{order_key}
     register_rest_route('oemline/v1', '/order-status/(?P<order_key>[a-z0-9_]+)', [
         'methods'  => 'GET',
@@ -1019,6 +1090,7 @@ add_action('rest_api_init', function () {
                 'status'         => $order->get_status(),
                 'total'          => $order->get_total(),
                 'currency'       => $order->get_currency(),
+                'payment_url'    => $order->get_checkout_payment_url(true),
                 'date_created'   => $order->get_date_created() ? $order->get_date_created()->format('c') : null,
                 'payment_method' => $order->get_payment_method_title(),
                 'items'          => $items,

@@ -423,6 +423,54 @@ add_filter('woocommerce_email_order_meta_fields', function ($fields, $sent_to_ad
 }, 10, 3);
 
 // ============================================================
+// 8. OUTGOING EMAIL (SMTP via ENV in Coolify)
+// ============================================================
+add_action('phpmailer_init', function ($phpmailer) {
+    // Prefer explicit SMTP_* vars, fallback to MAIL_* vars.
+    $host = getenv('SMTP_HOST') ?: getenv('MAIL_HOST');
+    if (!$host) {
+        return; // No SMTP config provided, keep WordPress defaults.
+    }
+
+    $port = (int) (getenv('SMTP_PORT') ?: getenv('MAIL_PORT') ?: 587);
+    $user = getenv('SMTP_USER') ?: getenv('MAIL_USERNAME') ?: getenv('MAIL_USER');
+    $pass = getenv('SMTP_PASSWORD') ?: getenv('MAIL_PASSWORD');
+    $from = getenv('SMTP_FROM_EMAIL') ?: getenv('MAIL_FROM_ADDRESS');
+    $from_name = getenv('SMTP_FROM_NAME') ?: getenv('MAIL_FROM_NAME') ?: get_bloginfo('name');
+    $secure = strtolower((string) (getenv('SMTP_SECURE') ?: getenv('MAIL_ENCRYPTION') ?: 'tls'));
+    $auth_raw = strtolower((string) (getenv('SMTP_AUTH') ?: 'true'));
+    $auth = !in_array($auth_raw, ['0', 'false', 'off', 'no'], true);
+
+    $phpmailer->isSMTP();
+    $phpmailer->Host = $host;
+    $phpmailer->Port = $port;
+    $phpmailer->SMTPAuth = $auth;
+    $phpmailer->Username = (string) $user;
+    $phpmailer->Password = (string) $pass;
+    $phpmailer->SMTPAutoTLS = true;
+
+    if (in_array($secure, ['ssl', 'tls'], true)) {
+        $phpmailer->SMTPSecure = $secure;
+    } else {
+        // Empty SMTPSecure allows STARTTLS upgrade when available.
+        $phpmailer->SMTPSecure = '';
+    }
+
+    if (!empty($from)) {
+        $phpmailer->From = $from;
+        $phpmailer->Sender = $from;
+    }
+    $phpmailer->FromName = $from_name;
+});
+
+add_action('wp_mail_failed', function ($wp_error) {
+    if (!is_wp_error($wp_error)) return;
+    $message = $wp_error->get_error_message();
+    $data = $wp_error->get_error_data();
+    error_log('[OEMLine Mail] wp_mail_failed: ' . $message . ' | data=' . wp_json_encode($data));
+});
+
+// ============================================================
 // 3. WOOCOMMERCE CHECKOUT VIA REST API
 // ============================================================
 add_action('rest_api_init', function () {

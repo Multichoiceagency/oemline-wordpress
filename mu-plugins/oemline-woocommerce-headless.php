@@ -434,7 +434,7 @@ add_action('phpmailer_init', function ($phpmailer) {
 
     $port = (int) (getenv('SMTP_PORT') ?: getenv('MAIL_PORT') ?: 587);
     $user = getenv('SMTP_USER') ?: getenv('MAIL_USERNAME') ?: getenv('MAIL_USER');
-    $pass = getenv('SMTP_PASSWORD') ?: getenv('MAIL_PASSWORD');
+    $pass = getenv('SMTP_PASSWORD') ?: getenv('SMTP_PASS') ?: getenv('MAIL_PASSWORD');
     $from = getenv('SMTP_FROM_EMAIL') ?: getenv('MAIL_FROM_ADDRESS');
     $from_name = getenv('SMTP_FROM_NAME') ?: getenv('MAIL_FROM_NAME') ?: get_bloginfo('name');
     $secure = strtolower((string) (getenv('SMTP_SECURE') ?: getenv('MAIL_ENCRYPTION') ?: 'tls'));
@@ -447,24 +447,27 @@ add_action('phpmailer_init', function ($phpmailer) {
     $phpmailer->SMTPAuth = $auth;
     $phpmailer->Username = (string) $user;
     $phpmailer->Password = (string) $pass;
-    $phpmailer->SMTPAutoTLS = true;
+    $secure_disabled = in_array($secure, ['', 'false', 'off', 'no', '0'], true);
+    $phpmailer->SMTPAutoTLS = !$secure_disabled;
 
     if (in_array($secure, ['ssl', 'tls'], true)) {
         $phpmailer->SMTPSecure = $secure;
     } else {
-        // Empty SMTPSecure allows STARTTLS upgrade when available.
+        // Explicitly disable encryption when configured as false/off/no/0.
         $phpmailer->SMTPSecure = '';
     }
 
-    // Some SMTP providers use certificate chains that fail strict verification in containers.
-    // This keeps delivery working in hosted environments like Coolify.
-    $phpmailer->SMTPOptions = [
-        'ssl' => [
-            'verify_peer'       => false,
-            'verify_peer_name'  => false,
-            'allow_self_signed' => true,
-        ],
-    ];
+    // Only relax TLS checks when explicitly requested through env.
+    $allow_insecure_tls = in_array(strtolower((string) getenv('SMTP_INSECURE_TLS')), ['1', 'true', 'yes', 'on'], true);
+    if ($allow_insecure_tls) {
+        $phpmailer->SMTPOptions = [
+            'ssl' => [
+                'verify_peer'       => false,
+                'verify_peer_name'  => false,
+                'allow_self_signed' => true,
+            ],
+        ];
+    }
 
     if (!empty($from)) {
         $phpmailer->From = $from;

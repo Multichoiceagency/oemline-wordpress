@@ -456,6 +456,16 @@ add_action('phpmailer_init', function ($phpmailer) {
         $phpmailer->SMTPSecure = '';
     }
 
+    // Some SMTP providers use certificate chains that fail strict verification in containers.
+    // This keeps delivery working in hosted environments like Coolify.
+    $phpmailer->SMTPOptions = [
+        'ssl' => [
+            'verify_peer'       => false,
+            'verify_peer_name'  => false,
+            'allow_self_signed' => true,
+        ],
+    ];
+
     if (!empty($from)) {
         $phpmailer->From = $from;
         $phpmailer->Sender = $from;

@@ -471,7 +471,7 @@ add_action('phpmailer_init', function ($phpmailer) {
         $phpmailer->Sender = $from;
     }
     $phpmailer->FromName = $from_name;
-});
+}, 9999, 1);
 
 add_action('wp_mail_failed', function ($wp_error) {
     if (!is_wp_error($wp_error)) return;

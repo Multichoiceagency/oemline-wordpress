@@ -447,6 +447,8 @@ add_action('phpmailer_init', function ($phpmailer) {
     $phpmailer->SMTPAuth = $auth;
     $phpmailer->Username = (string) $user;
     $phpmailer->Password = (string) $pass;
+    $phpmailer->Timeout = 20;
+    $phpmailer->Timelimit = 30;
     $secure_disabled = in_array($secure, ['', 'false', 'off', 'no', '0'], true);
     $phpmailer->SMTPAutoTLS = !$secure_disabled;
 

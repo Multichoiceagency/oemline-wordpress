@@ -1,7 +1,7 @@
 FROM wordpress:6.9-apache
 
-# Install WP-CLI + unzip
-RUN apt-get update && apt-get install -y unzip libzip-dev && rm -rf /var/lib/apt/lists/* && \
+# Install WP-CLI + unzip + CA trust store for SMTP TLS verification
+RUN apt-get update && apt-get install -y unzip libzip-dev ca-certificates && update-ca-certificates && rm -rf /var/lib/apt/lists/* && \
     curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && \
     chmod +x wp-cli.phar && mv wp-cli.phar /usr/local/bin/wp
 

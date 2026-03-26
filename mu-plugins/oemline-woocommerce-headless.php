@@ -629,8 +629,13 @@ add_action('rest_api_init', function () {
                 }
             }
 
-            // Fallback: direct Mollie API call to get checkout URL
-            if (empty($payment_url) && strpos($payment_method, 'mollie') !== false) {
+            $is_mollie_method = strpos($payment_method, 'mollie') !== false;
+            $is_woocommerce_pay_page = !empty($payment_url) && strpos($payment_url, '/checkout/order-pay/') !== false;
+
+            // Prefer direct Mollie checkout URL for Mollie methods:
+            // - when gateway did not return a redirect
+            // - OR when gateway returned WooCommerce order-pay URL (can show generic/incorrect icons)
+            if (($is_mollie_method && empty($payment_url)) || ($is_mollie_method && $is_woocommerce_pay_page)) {
                 $mollie_key = defined('MOLLIE_API_KEY') ? MOLLIE_API_KEY : getenv('MOLLIE_API_KEY');
                 if ($mollie_key) {
                     $method_map = [
@@ -639,23 +644,36 @@ add_action('rest_api_init', function () {
                         'mollie_wc_gateway_creditcard'    => 'creditcard',
                         'mollie_wc_gateway_bancontact'    => 'bancontact',
                         'mollie_wc_gateway_paybybank'     => 'paybybank',
+                        'mollie_wc_gateway_kbc'           => 'kbc',
+                        'mollie_wc_gateway_belfius'       => 'belfius',
+                        'mollie_wc_gateway_eps'           => 'eps',
+                        'mollie_wc_gateway_przelewy24'    => 'przelewy24',
+                        'mollie_wc_gateway_bancomatpay'   => 'bancomatpay',
+                        'mollie_wc_gateway_satispay'      => 'satispay',
+                        'mollie_wc_gateway_swish'         => 'swish',
+                        'mollie_wc_gateway_mbway'         => 'mbway',
+                        'mollie_wc_gateway_multibanco'    => 'multibanco',
+                        'mollie_wc_gateway_wero'          => 'wero',
                         'mollie_wc_gateway_in3'           => 'in3',
                     ];
-                    $mollie_method = $method_map[$payment_method] ?? 'ideal';
+                    $mollie_method = $method_map[$payment_method] ?? '';
                     $storefront_url = defined('STOREFRONT_URL') ? STOREFRONT_URL : (getenv('STOREFRONT_URL') ?: 'https://oemline.eu');
+                    $mollie_payload = [
+                        'amount'      => ['currency' => $order->get_currency(), 'value' => number_format($order->get_total(), 2, '.', '')],
+                        'description' => 'Bestelling #' . $order->get_order_number(),
+                        'redirectUrl' => $storefront_url . '/checkout/success?order=' . $order->get_order_number() . '&key=' . $order->get_order_key(),
+                        'webhookUrl'  => home_url('/wp-json/oemline/v1/mollie-webhook'),
+                        'metadata'    => ['order_id' => $order->get_id()],
+                    ];
+                    if (!empty($mollie_method)) {
+                        $mollie_payload['method'] = $mollie_method;
+                    }
                     $ch = curl_init('https://api.mollie.com/v2/payments');
                     curl_setopt_array($ch, [
                         CURLOPT_RETURNTRANSFER => true,
                         CURLOPT_POST           => true,
                         CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $mollie_key, 'Content-Type: application/json'],
-                        CURLOPT_POSTFIELDS     => json_encode([
-                            'amount'      => ['currency' => $order->get_currency(), 'value' => number_format($order->get_total(), 2, '.', '')],
-                            'description' => 'Bestelling #' . $order->get_order_number(),
-                            'method'      => $mollie_method,
-                            'redirectUrl' => $storefront_url . '/checkout/success?order=' . $order->get_order_number() . '&key=' . $order->get_order_key(),
-                            'webhookUrl'  => home_url('/wp-json/oemline/v1/mollie-webhook'),
-                            'metadata'    => ['order_id' => $order->get_id()],
-                        ]),
+                        CURLOPT_POSTFIELDS     => json_encode($mollie_payload),
                     ]);
                     $response = curl_exec($ch);
                     curl_close($ch);

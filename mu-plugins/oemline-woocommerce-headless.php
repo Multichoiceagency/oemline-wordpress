@@ -1140,3 +1140,140 @@ add_action('rest_api_init', function () {
         'permission_callback' => '__return_true',
     ]);
 });
+
+// ============================================================
+// 7. PRODUCT OVERRIDES & EXTENSIONS REST API
+// ============================================================
+add_action('rest_api_init', function () {
+
+    // GET /wp-json/oemline/v1/product-override?article=ADV182118
+    // Returns override data (custom images, price, description) for an article number
+    register_rest_route('oemline/v1', '/product-override', [
+        'methods'  => 'GET',
+        'callback' => function (WP_REST_Request $request) {
+            $article = sanitize_text_field($request->get_param('article') ?: '');
+            if (empty($article)) {
+                return new WP_REST_Response(['error' => 'article parameter required'], 400);
+            }
+
+            // Search product-override CPT by ACF field tecdoc_article_number
+            $posts = get_posts([
+                'post_type'      => 'product-override',
+                'posts_per_page' => 1,
+                'meta_query'     => [
+                    [
+                        'key'     => 'tecdoc_article_number',
+                        'value'   => $article,
+                        'compare' => '=',
+                    ],
+                ],
+            ]);
+
+            if (empty($posts)) {
+                // Also try normalized (strip non-alphanumeric)
+                $normalized = preg_replace('/[^a-zA-Z0-9]/', '', $article);
+                $posts = get_posts([
+                    'post_type'      => 'product-override',
+                    'posts_per_page' => 1,
+                    'meta_query'     => [
+                        [
+                            'key'     => 'tecdoc_article_number',
+                            'value'   => $normalized,
+                            'compare' => '=',
+                        ],
+                    ],
+                ]);
+            }
+
+            if (empty($posts)) {
+                return new WP_REST_Response(null, 204);
+            }
+
+            $post = $posts[0];
+            $acf  = function_exists('get_fields') ? get_fields($post->ID) : [];
+
+            $images = [];
+            if (!empty($acf['main_image'])) {
+                $images[] = is_array($acf['main_image']) ? ($acf['main_image']['url'] ?? '') : $acf['main_image'];
+            }
+            if (!empty($acf['gallery_images']) && is_array($acf['gallery_images'])) {
+                foreach ($acf['gallery_images'] as $img) {
+                    $images[] = is_array($img) ? ($img['url'] ?? '') : $img;
+                }
+            }
+
+            return new WP_REST_Response([
+                'id'              => $post->ID,
+                'article_number'  => $acf['tecdoc_article_number'] ?? $article,
+                'brand'           => $acf['tecdoc_brand'] ?? '',
+                'images'          => array_filter($images),
+                'custom_price'    => !empty($acf['custom_price']) ? floatval($acf['custom_price']) : null,
+                'description'     => $acf['custom_description'] ?? null,
+                'specifications'  => $acf['specifications'] ?? null,
+                'applicability'   => $acf['applicability'] ?? null,
+                'original_numbers'=> $acf['original_numbers'] ?? null,
+                'manufacturer_info'=> $acf['manufacturer_info'] ?? null,
+                'delivery_time'   => $acf['delivery_time'] ?? null,
+                'extra_info'      => $acf['extra_info'] ?? null,
+            ]);
+        },
+        'permission_callback' => '__return_true',
+    ]);
+
+    // GET /wp-json/oemline/v1/product-extension?article=ADV182118
+    // Returns extension data (vehicle info, extra specs, SEO, tabs) for an article number
+    register_rest_route('oemline/v1', '/product-extension', [
+        'methods'  => 'GET',
+        'callback' => function (WP_REST_Request $request) {
+            $article = sanitize_text_field($request->get_param('article') ?: '');
+            if (empty($article)) {
+                return new WP_REST_Response(['error' => 'article parameter required'], 400);
+            }
+
+            $posts = get_posts([
+                'post_type'      => 'product-extension',
+                'posts_per_page' => 1,
+                'meta_query'     => [
+                    [
+                        'key'     => 'article_number',
+                        'value'   => $article,
+                        'compare' => '=',
+                    ],
+                ],
+            ]);
+
+            if (empty($posts)) {
+                $normalized = preg_replace('/[^a-zA-Z0-9]/', '', $article);
+                $posts = get_posts([
+                    'post_type'      => 'product-extension',
+                    'posts_per_page' => 1,
+                    'meta_query'     => [
+                        [
+                            'key'     => 'article_number',
+                            'value'   => $normalized,
+                            'compare' => '=',
+                        ],
+                    ],
+                ]);
+            }
+
+            if (empty($posts)) {
+                return new WP_REST_Response(null, 204);
+            }
+
+            $post = $posts[0];
+            $acf  = function_exists('get_fields') ? get_fields($post->ID) : [];
+
+            return new WP_REST_Response([
+                'id'                   => $post->ID,
+                'article_number'       => $acf['article_number'] ?? $article,
+                'brand_code'           => $acf['brand_code'] ?? '',
+                'vehicle'              => $acf['vehicle'] ?? null,
+                'extra_specifications'  => $acf['extra_specifications'] ?? [],
+                'product_tabs'         => $acf['product_tabs'] ?? null,
+                'seo'                  => $acf['seo'] ?? null,
+            ]);
+        },
+        'permission_callback' => '__return_true',
+    ]);
+});

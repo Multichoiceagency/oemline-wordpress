@@ -1392,4 +1392,85 @@ add_action('rest_api_init', function () {
         },
         'permission_callback' => '__return_true',
     ]);
+
+    // GET /wp-json/oemline/v1/bulk-override?brand=BOSCH&category=Oliefilter
+    // Returns brand-level and/or category-level overrides that apply to a product
+    register_rest_route('oemline/v1', '/bulk-override', [
+        'methods'  => 'GET',
+        'callback' => function (WP_REST_Request $request) {
+            $brand    = sanitize_text_field($request->get_param('brand') ?: '');
+            $category = sanitize_text_field($request->get_param('category') ?: '');
+
+            if (empty($brand) && empty($category)) {
+                return new WP_REST_Response(null, 204);
+            }
+
+            $result = [
+                'brand_override'    => null,
+                'category_override' => null,
+            ];
+
+            // Brand-level override
+            if ($brand) {
+                $posts = get_posts([
+                    'post_type'      => 'bulk-override',
+                    'posts_per_page' => 1,
+                    'meta_query'     => [
+                        ['key' => 'override_type', 'value' => 'brand', 'compare' => '='],
+                        ['key' => 'brand_name', 'value' => $brand, 'compare' => '='],
+                    ],
+                ]);
+                if (!empty($posts)) {
+                    $acf = function_exists('get_fields') ? get_fields($posts[0]->ID) : [];
+                    $result['brand_override'] = [
+                        'id'                => $posts[0]->ID,
+                        'brand_name'        => $acf['brand_name'] ?? $brand,
+                        'custom_description'=> $acf['custom_description'] ?? null,
+                        'delivery_time'     => $acf['delivery_time'] ?? null,
+                        'warranty_text'     => $acf['warranty_text'] ?? null,
+                        'badge'             => $acf['badge'] ?? null,
+                        'price_modifier'    => $acf['price_modifier'] ?? null,
+                        'price_modifier_type'=> $acf['price_modifier_type'] ?? null,
+                        'extra_info'        => $acf['extra_info'] ?? null,
+                        'is_active'         => !empty($acf['is_active']),
+                    ];
+                }
+            }
+
+            // Category-level override
+            if ($category) {
+                $posts = get_posts([
+                    'post_type'      => 'bulk-override',
+                    'posts_per_page' => 1,
+                    'meta_query'     => [
+                        ['key' => 'override_type', 'value' => 'category', 'compare' => '='],
+                        ['key' => 'category_name', 'value' => $category, 'compare' => '='],
+                    ],
+                ]);
+                if (!empty($posts)) {
+                    $acf = function_exists('get_fields') ? get_fields($posts[0]->ID) : [];
+                    $result['category_override'] = [
+                        'id'                => $posts[0]->ID,
+                        'category_name'     => $acf['category_name'] ?? $category,
+                        'custom_description'=> $acf['custom_description'] ?? null,
+                        'delivery_time'     => $acf['delivery_time'] ?? null,
+                        'badge'             => $acf['badge'] ?? null,
+                        'price_modifier'    => $acf['price_modifier'] ?? null,
+                        'price_modifier_type'=> $acf['price_modifier_type'] ?? null,
+                        'extra_info'        => $acf['extra_info'] ?? null,
+                        'seo_title'         => $acf['seo_title'] ?? null,
+                        'seo_description'   => $acf['seo_description'] ?? null,
+                        'is_active'         => !empty($acf['is_active']),
+                    ];
+                }
+            }
+
+            if (!$result['brand_override'] && !$result['category_override']) {
+                return new WP_REST_Response(null, 204);
+            }
+
+            return new WP_REST_Response($result);
+        },
+        'permission_callback' => '__return_true',
+    ]);
 });

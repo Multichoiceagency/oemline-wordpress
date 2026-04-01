@@ -161,6 +161,7 @@ add_action('init', function () {
     $cpts = [
         'featured-product'  => ['name' => 'Featured Products',  'singular' => 'Featured Product',  'icon' => 'dashicons-star-filled',  'rest_base' => 'featured-products'],
         'featured-category' => ['name' => 'Featured Categories','singular' => 'Featured Category', 'icon' => 'dashicons-category',     'rest_base' => 'featured-categories'],
+        'bulk-override'     => ['name' => 'Bulk Overrides',     'singular' => 'Bulk Override',     'icon' => 'dashicons-admin-generic', 'rest_base' => 'bulk-overrides'],
         'price-request'     => ['name' => 'Price Requests',     'singular' => 'Price Request',     'icon' => 'dashicons-tag',          'rest_base' => 'price-requests'],
     ];
 

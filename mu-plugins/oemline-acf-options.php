@@ -809,6 +809,66 @@ add_action('acf/init', function () {
         ],
     ]);
 
+    // ── BULK OVERRIDES (per merk of categorie) ────────────────────────
+    acf_add_local_field_group([
+        'key'    => 'group_bulk_overrides',
+        'title'  => 'Bulk Override Instellingen',
+        'fields' => [
+            [
+                'key' => 'field_bo_type', 'label' => 'Type', 'name' => 'override_type', 'type' => 'select', 'required' => 1,
+                'choices' => ['brand' => 'Merk', 'category' => 'Categorie'],
+                'instructions' => 'Kies of deze override geldt voor een merk of categorie.',
+            ],
+            [
+                'key' => 'field_bo_brand', 'label' => 'Merknaam', 'name' => 'brand_name', 'type' => 'text',
+                'instructions' => 'Exact de merknaam zoals in TecDoc (bijv. BOSCH, HELLA, MANN-FILTER).',
+                'conditional_logic' => [[['field' => 'field_bo_type', 'operator' => '==', 'value' => 'brand']]],
+            ],
+            [
+                'key' => 'field_bo_category', 'label' => 'Categorienaam', 'name' => 'category_name', 'type' => 'text',
+                'instructions' => 'Exact de categorienaam (bijv. Oliefilter, Remschijf, Luchtfilter).',
+                'conditional_logic' => [[['field' => 'field_bo_type', 'operator' => '==', 'value' => 'category']]],
+            ],
+            ['key' => 'field_bo_active', 'label' => 'Actief', 'name' => 'is_active', 'type' => 'true_false', 'default_value' => 1],
+            ['key' => 'field_bo_desc', 'label' => 'Aangepaste beschrijving', 'name' => 'custom_description', 'type' => 'wysiwyg',
+                'instructions' => 'Wordt getoond op alle productpagina\'s van dit merk/categorie.'],
+            ['key' => 'field_bo_delivery', 'label' => 'Levertijd tekst', 'name' => 'delivery_time', 'type' => 'text',
+                'placeholder' => '1-3 werkdagen'],
+            ['key' => 'field_bo_warranty', 'label' => 'Garantie tekst', 'name' => 'warranty_text', 'type' => 'text',
+                'placeholder' => '2 jaar fabrieksgarantie',
+                'conditional_logic' => [[['field' => 'field_bo_type', 'operator' => '==', 'value' => 'brand']]],
+            ],
+            [
+                'key' => 'field_bo_badge', 'label' => 'Badge', 'name' => 'badge', 'type' => 'select',
+                'choices' => ['none' => 'Geen', 'sale' => 'SALE', 'new' => 'NIEUW', 'popular' => 'POPULAIR', 'recommended' => 'AANBEVOLEN'],
+                'default_value' => 'none',
+            ],
+            [
+                'key' => 'field_bo_price_mod', 'label' => 'Prijs aanpassing', 'name' => 'price_modifier', 'type' => 'number', 'step' => '0.01',
+                'instructions' => 'Percentage of vast bedrag. Positief = toeslag, negatief = korting.',
+            ],
+            [
+                'key' => 'field_bo_price_mod_type', 'label' => 'Prijs aanpassing type', 'name' => 'price_modifier_type', 'type' => 'select',
+                'choices' => ['percentage' => 'Percentage (%)', 'fixed' => 'Vast bedrag (€)'],
+                'default_value' => 'percentage',
+                'conditional_logic' => [[['field' => 'field_bo_price_mod', 'operator' => '!=empty']]],
+            ],
+            ['key' => 'field_bo_extra', 'label' => 'Extra informatie', 'name' => 'extra_info', 'type' => 'wysiwyg'],
+            // SEO (alleen voor categorie)
+            [
+                'key' => 'field_bo_seo_title', 'label' => 'SEO Titel', 'name' => 'seo_title', 'type' => 'text',
+                'conditional_logic' => [[['field' => 'field_bo_type', 'operator' => '==', 'value' => 'category']]],
+            ],
+            [
+                'key' => 'field_bo_seo_desc', 'label' => 'SEO Beschrijving', 'name' => 'seo_description', 'type' => 'textarea', 'rows' => 3,
+                'conditional_logic' => [[['field' => 'field_bo_type', 'operator' => '==', 'value' => 'category']]],
+            ],
+        ],
+        'location' => [
+            [['param' => 'post_type', 'operator' => '==', 'value' => 'bulk-override']],
+        ],
+    ]);
+
     // ── SITE SETTINGS ──────────────────────────────────────────────────
     acf_add_local_field_group([
         'key'    => 'group_site_settings',

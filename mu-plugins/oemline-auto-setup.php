@@ -192,9 +192,10 @@ add_action('init', function () {
 
     $cpts = [
         'oemline-menu'       => ['name' => 'Menus',              'singular' => 'Menu',              'icon' => 'dashicons-menu-alt3',    'rest_base' => 'oemline-menu'],
+        'featured-product'   => ['name' => 'Featured Products',  'singular' => 'Featured Product',  'icon' => 'dashicons-star-filled',  'rest_base' => 'featured-products'],
+        'featured-category'  => ['name' => 'Featured Categories','singular' => 'Featured Category', 'icon' => 'dashicons-category',     'rest_base' => 'featured-categories'],
         'price-request'      => ['name' => 'Price Requests',     'singular' => 'Price Request',     'icon' => 'dashicons-tag',          'rest_base' => 'price-requests'],
-        // featured-product and featured-category removed — handled by theme/acf-cpts.php
-        // product-override and product-extension handled by theme/functions.php + acf-cpts.php
+        // product-override and product-extension registered in theme/functions.php with ACF fields in theme/inc/acf-cpts.php
     ];
 
     foreach ($cpts as $slug => $config) {

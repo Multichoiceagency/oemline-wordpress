@@ -1276,4 +1276,120 @@ add_action('rest_api_init', function () {
         },
         'permission_callback' => '__return_true',
     ]);
+
+    // GET /wp-json/oemline/v1/featured-products?location=homepage_carousel
+    // Returns active featured products for a specific display location
+    register_rest_route('oemline/v1', '/featured-products', [
+        'methods'  => 'GET',
+        'callback' => function (WP_REST_Request $request) {
+            $location = sanitize_text_field($request->get_param('location') ?: '');
+            $limit    = absint($request->get_param('limit') ?: 24);
+
+            $args = [
+                'post_type'      => 'featured-product',
+                'posts_per_page' => min($limit, 100),
+                'orderby'        => 'meta_value_num',
+                'meta_key'       => 'display_order',
+                'order'          => 'ASC',
+                'meta_query'     => [
+                    ['key' => 'is_active', 'value' => '1', 'compare' => '='],
+                ],
+            ];
+
+            // Filter by location if specified
+            if ($location) {
+                $args['meta_query'][] = [
+                    'key'     => 'display_location',
+                    'value'   => $location,
+                    'compare' => 'LIKE',
+                ];
+            }
+
+            $posts = get_posts($args);
+            $items = [];
+
+            foreach ($posts as $post) {
+                $acf = function_exists('get_fields') ? get_fields($post->ID) : [];
+                $cached = $acf['cached_data'] ?? [];
+
+                $items[] = [
+                    'id'              => $post->ID,
+                    'title'           => $post->post_title,
+                    'article_number'  => $acf['article_number'] ?? '',
+                    'brand_code'      => $acf['brand_code'] ?? '',
+                    'display_location'=> $acf['display_location'] ?? [],
+                    'custom_price'    => !empty($acf['custom_price']) ? floatval($acf['custom_price']) : null,
+                    'custom_image'    => $acf['custom_image'] ?? null,
+                    'badge'           => $acf['badge'] ?? 'none',
+                    'display_order'   => intval($acf['display_order'] ?? 0),
+                    'is_active'       => !empty($acf['is_active']),
+                    // Cached data from Dashboard API
+                    'description'     => $cached['description'] ?? '',
+                    'brand_name'      => $cached['brand_name'] ?? '',
+                    'category_name'   => $cached['category_name'] ?? '',
+                    'image_url'       => $acf['custom_image'] ?: ($cached['image_url'] ?? ''),
+                    'price'           => $acf['custom_price'] ?: ($cached['price'] ?? null),
+                    'stock'           => $cached['stock'] ?? null,
+                ];
+            }
+
+            return new WP_REST_Response($items);
+        },
+        'permission_callback' => '__return_true',
+    ]);
+
+    // GET /wp-json/oemline/v1/featured-categories?homepage=1
+    // Returns active featured categories
+    register_rest_route('oemline/v1', '/featured-categories', [
+        'methods'  => 'GET',
+        'callback' => function (WP_REST_Request $request) {
+            $homepage = $request->get_param('homepage');
+            $nav      = $request->get_param('nav');
+            $limit    = absint($request->get_param('limit') ?: 24);
+
+            $args = [
+                'post_type'      => 'featured-category',
+                'posts_per_page' => min($limit, 100),
+                'orderby'        => 'meta_value_num',
+                'meta_key'       => 'display_order',
+                'order'          => 'ASC',
+                'meta_query'     => [
+                    ['key' => 'is_active', 'value' => '1', 'compare' => '='],
+                ],
+            ];
+
+            if ($homepage === '1') {
+                $args['meta_query'][] = ['key' => 'show_on_homepage', 'value' => '1', 'compare' => '='];
+            }
+            if ($nav === '1') {
+                $args['meta_query'][] = ['key' => 'show_in_nav', 'value' => '1', 'compare' => '='];
+            }
+
+            $posts = get_posts($args);
+            $items = [];
+
+            foreach ($posts as $post) {
+                $acf    = function_exists('get_fields') ? get_fields($post->ID) : [];
+                $cached = $acf['cached_data'] ?? [];
+
+                $items[] = [
+                    'id'                    => $post->ID,
+                    'title'                 => $post->post_title,
+                    'dashboard_category_id' => intval($acf['dashboard_category_id'] ?? 0),
+                    'description'           => $acf['description'] ?? '',
+                    'category_image'        => $acf['category_image'] ?? null,
+                    'icon'                  => $acf['icon'] ?? '',
+                    'display_order'         => intval($acf['display_order'] ?? 0),
+                    'show_on_homepage'      => !empty($acf['show_on_homepage']),
+                    'show_in_nav'           => !empty($acf['show_in_nav']),
+                    // Cached
+                    'name'                  => $cached['name'] ?? $post->post_title,
+                    'product_count'         => $cached['product_count'] ?? 0,
+                ];
+            }
+
+            return new WP_REST_Response($items);
+        },
+        'permission_callback' => '__return_true',
+    ]);
 });

@@ -545,6 +545,312 @@ add_action('acf/init', function () {
             [['param' => 'options_page', 'operator' => '==', 'value' => 'cart-page-config']],
         ],
     ]);
+
+    // ── HEADER ─────────────────────────────────────────────────────────
+    acf_add_local_field_group([
+        'key'    => 'group_header',
+        'title'  => 'Header Instellingen',
+        'fields' => [
+            // Announcement Bar
+            [
+                'key'        => 'field_hdr_ab',
+                'label'      => 'Announcement Bar',
+                'name'       => 'announcement_bar',
+                'type'       => 'group',
+                'layout'     => 'block',
+                'sub_fields' => [
+                    ['key' => 'field_hdr_ab_enabled',    'label' => 'Ingeschakeld',        'name' => 'enabled',          'type' => 'true_false', 'default_value' => 0],
+                    ['key' => 'field_hdr_ab_text',       'label' => 'Tekst',               'name' => 'text',             'type' => 'text',       'default_value' => 'Gratis verzending vanaf €50'],
+                    ['key' => 'field_hdr_ab_link_text',  'label' => 'Link tekst',          'name' => 'link_text',        'type' => 'text'],
+                    ['key' => 'field_hdr_ab_link_url',   'label' => 'Link URL',            'name' => 'link_url',         'type' => 'url'],
+                    ['key' => 'field_hdr_ab_bg_color',   'label' => 'Achtergrondkleur',    'name' => 'background_color', 'type' => 'color_picker', 'default_value' => '#F36C21'],
+                    ['key' => 'field_hdr_ab_text_color', 'label' => 'Tekstkleur',          'name' => 'text_color',       'type' => 'color_picker', 'default_value' => '#ffffff'],
+                ],
+            ],
+            // Top Bar
+            [
+                'key'        => 'field_hdr_tb',
+                'label'      => 'Top Bar',
+                'name'       => 'top_bar',
+                'type'       => 'group',
+                'layout'     => 'block',
+                'sub_fields' => [
+                    ['key' => 'field_hdr_tb_enabled', 'label' => 'Ingeschakeld', 'name' => 'enabled', 'type' => 'true_false', 'default_value' => 1],
+                    ['key' => 'field_hdr_tb_phone',   'label' => 'Telefoonnummer', 'name' => 'phone',   'type' => 'text',       'default_value' => '+31 85 060 48 14'],
+                    ['key' => 'field_hdr_tb_tagline', 'label' => 'Tagline',      'name' => 'tagline', 'type' => 'text',       'default_value' => 'Auto-onderdelen van topmerken'],
+                ],
+            ],
+            // Main Navigation
+            [
+                'key'        => 'field_hdr_nav',
+                'label'      => 'Hoofdnavigatie',
+                'name'       => 'main_nav',
+                'type'       => 'group',
+                'layout'     => 'block',
+                'sub_fields' => [
+                    [
+                        'key'          => 'field_hdr_nav_links',
+                        'label'        => 'Links',
+                        'name'         => 'links',
+                        'type'         => 'repeater',
+                        'button_label' => 'Link toevoegen',
+                        'layout'       => 'table',
+                        'sub_fields'   => [
+                            ['key' => 'field_hdr_nav_l_label', 'label' => 'Label', 'name' => 'label', 'type' => 'text'],
+                            ['key' => 'field_hdr_nav_l_url',   'label' => 'URL',   'name' => 'url',   'type' => 'url'],
+                        ],
+                    ],
+                ],
+            ],
+            // Departments Menu
+            [
+                'key'          => 'field_hdr_departments',
+                'label'        => 'Afdelingen Menu',
+                'name'         => 'departments_menu',
+                'type'         => 'repeater',
+                'button_label' => 'Afdeling toevoegen',
+                'layout'       => 'block',
+                'sub_fields'   => [
+                    ['key' => 'field_hdr_dep_label', 'label' => 'Naam',  'name' => 'label', 'type' => 'text'],
+                    ['key' => 'field_hdr_dep_href',  'label' => 'URL',   'name' => 'href',  'type' => 'url'],
+                    [
+                        'key'          => 'field_hdr_dep_children',
+                        'label'        => 'Subcategorieën',
+                        'name'         => 'children',
+                        'type'         => 'repeater',
+                        'button_label' => 'Subcategorie toevoegen',
+                        'layout'       => 'table',
+                        'sub_fields'   => [
+                            ['key' => 'field_hdr_dep_c_label', 'label' => 'Naam', 'name' => 'label', 'type' => 'text'],
+                            ['key' => 'field_hdr_dep_c_href',  'label' => 'URL',  'name' => 'href',  'type' => 'url'],
+                        ],
+                    ],
+                ],
+            ],
+            // Main Menu
+            [
+                'key'          => 'field_hdr_main_menu',
+                'label'        => 'Hoofdmenu',
+                'name'         => 'main_menu',
+                'type'         => 'repeater',
+                'button_label' => 'Menu-item toevoegen',
+                'layout'       => 'block',
+                'sub_fields'   => [
+                    ['key' => 'field_hdr_mm_label', 'label' => 'Naam',  'name' => 'label', 'type' => 'text'],
+                    ['key' => 'field_hdr_mm_href',  'label' => 'URL',   'name' => 'href',  'type' => 'url'],
+                    [
+                        'key'          => 'field_hdr_mm_children',
+                        'label'        => 'Submenu',
+                        'name'         => 'children',
+                        'type'         => 'repeater',
+                        'button_label' => 'Submenu-item toevoegen',
+                        'layout'       => 'table',
+                        'sub_fields'   => [
+                            ['key' => 'field_hdr_mm_c_label', 'label' => 'Naam', 'name' => 'label', 'type' => 'text'],
+                            ['key' => 'field_hdr_mm_c_href',  'label' => 'URL',  'name' => 'href',  'type' => 'url'],
+                        ],
+                    ],
+                ],
+            ],
+            // Shipping Badge
+            [
+                'key'        => 'field_hdr_sb',
+                'label'      => 'Verzending Badge',
+                'name'       => 'shipping_badge',
+                'type'       => 'group',
+                'layout'     => 'block',
+                'sub_fields' => [
+                    ['key' => 'field_hdr_sb_enabled',   'label' => 'Ingeschakeld',     'name' => 'enabled',   'type' => 'true_false', 'default_value' => 1],
+                    ['key' => 'field_hdr_sb_text',      'label' => 'Tekst',            'name' => 'text',      'type' => 'text',       'default_value' => 'Gratis verzending vanaf €50'],
+                    ['key' => 'field_hdr_sb_threshold', 'label' => 'Drempelbedrag (€)','name' => 'threshold', 'type' => 'number',     'default_value' => 50],
+                ],
+            ],
+        ],
+        'location' => [
+            [['param' => 'options_page', 'operator' => '==', 'value' => 'header']],
+        ],
+    ]);
+
+    // ── FOOTER ─────────────────────────────────────────────────────────
+    acf_add_local_field_group([
+        'key'    => 'group_footer',
+        'title'  => 'Footer Instellingen',
+        'fields' => [
+            // Newsletter
+            [
+                'key'        => 'field_ftr_nl',
+                'label'      => 'Nieuwsbrief',
+                'name'       => 'newsletter',
+                'type'       => 'group',
+                'layout'     => 'block',
+                'sub_fields' => [
+                    ['key' => 'field_ftr_nl_enabled', 'label' => 'Ingeschakeld', 'name' => 'enabled',     'type' => 'true_false', 'default_value' => 1],
+                    ['key' => 'field_ftr_nl_title',   'label' => 'Titel',        'name' => 'title',       'type' => 'text',       'default_value' => 'Blijf op de hoogte'],
+                    ['key' => 'field_ftr_nl_desc',    'label' => 'Beschrijving', 'name' => 'description', 'type' => 'text',       'default_value' => 'Schrijf u in voor onze nieuwsbrief'],
+                ],
+            ],
+            // Contact Section
+            [
+                'key'        => 'field_ftr_cs',
+                'label'      => 'Contact Sectie',
+                'name'       => 'contact_section',
+                'type'       => 'group',
+                'layout'     => 'block',
+                'sub_fields' => [
+                    ['key' => 'field_ftr_cs_title', 'label' => 'Titel',        'name' => 'title',       'type' => 'text', 'default_value' => 'Contact'],
+                    ['key' => 'field_ftr_cs_desc',  'label' => 'Beschrijving', 'name' => 'description', 'type' => 'textarea'],
+                    ['key' => 'field_ftr_cs_phone', 'label' => 'Telefoon',     'name' => 'phone',       'type' => 'text'],
+                    ['key' => 'field_ftr_cs_email', 'label' => 'E-mail',       'name' => 'email',       'type' => 'email'],
+                    ['key' => 'field_ftr_cs_hours', 'label' => 'Openingstijden','name' => 'hours',      'type' => 'text'],
+                ],
+            ],
+            // Menu Columns (use_menu_system)
+            ['key' => 'field_ftr_use_menu', 'label' => 'Gebruik menu systeem', 'name' => 'use_menu_system', 'type' => 'true_false', 'default_value' => 0, 'instructions' => 'Gebruik ACF menu kolommen i.p.v. WordPress menu\'s.'],
+            [
+                'key'          => 'field_ftr_columns',
+                'label'        => 'Menu Kolommen',
+                'name'         => 'menu_columns',
+                'type'         => 'repeater',
+                'button_label' => 'Kolom toevoegen',
+                'max'          => 4,
+                'layout'       => 'block',
+                'sub_fields'   => [
+                    ['key' => 'field_ftr_col_title', 'label' => 'Kolom Titel', 'name' => 'title', 'type' => 'text'],
+                    [
+                        'key'          => 'field_ftr_col_links',
+                        'label'        => 'Links',
+                        'name'         => 'links',
+                        'type'         => 'repeater',
+                        'button_label' => 'Link toevoegen',
+                        'layout'       => 'table',
+                        'sub_fields'   => [
+                            ['key' => 'field_ftr_col_l_label', 'label' => 'Label', 'name' => 'label', 'type' => 'text'],
+                            ['key' => 'field_ftr_col_l_url',   'label' => 'URL',   'name' => 'url',   'type' => 'url'],
+                        ],
+                    ],
+                ],
+            ],
+            // Categories Section
+            [
+                'key'        => 'field_ftr_cats',
+                'label'      => 'Categorieën Sectie',
+                'name'       => 'categories_section',
+                'type'       => 'group',
+                'layout'     => 'block',
+                'sub_fields' => [
+                    ['key' => 'field_ftr_cats_title', 'label' => 'Titel',  'name' => 'title',  'type' => 'text', 'default_value' => 'Categorieën'],
+                    [
+                        'key'          => 'field_ftr_cats_links',
+                        'label'        => 'Links',
+                        'name'         => 'links',
+                        'type'         => 'repeater',
+                        'button_label' => 'Link toevoegen',
+                        'layout'       => 'table',
+                        'sub_fields'   => [
+                            ['key' => 'field_ftr_cats_l_label', 'label' => 'Label', 'name' => 'label', 'type' => 'text'],
+                            ['key' => 'field_ftr_cats_l_url',   'label' => 'URL',   'name' => 'url',   'type' => 'url'],
+                        ],
+                    ],
+                ],
+            ],
+            // Information Section
+            [
+                'key'        => 'field_ftr_info',
+                'label'      => 'Informatie Sectie',
+                'name'       => 'information_section',
+                'type'       => 'group',
+                'layout'     => 'block',
+                'sub_fields' => [
+                    ['key' => 'field_ftr_info_title', 'label' => 'Titel',  'name' => 'title',  'type' => 'text', 'default_value' => 'Informatie'],
+                    [
+                        'key'          => 'field_ftr_info_links',
+                        'label'        => 'Links',
+                        'name'         => 'links',
+                        'type'         => 'repeater',
+                        'button_label' => 'Link toevoegen',
+                        'layout'       => 'table',
+                        'sub_fields'   => [
+                            ['key' => 'field_ftr_info_l_label', 'label' => 'Label', 'name' => 'label', 'type' => 'text'],
+                            ['key' => 'field_ftr_info_l_url',   'label' => 'URL',   'name' => 'url',   'type' => 'url'],
+                        ],
+                    ],
+                ],
+            ],
+            // Bottom Bar
+            [
+                'key'        => 'field_ftr_bb',
+                'label'      => 'Onderbalk',
+                'name'       => 'bottom_bar',
+                'type'       => 'group',
+                'layout'     => 'block',
+                'sub_fields' => [
+                    ['key' => 'field_ftr_bb_text',      'label' => 'Copyright tekst', 'name' => 'text',      'type' => 'text', 'default_value' => '© 2025 OEMLine. Alle rechten voorbehouden.'],
+                    ['key' => 'field_ftr_bb_kvk',       'label' => 'KVK nummer',      'name' => 'kvk',       'type' => 'text'],
+                    ['key' => 'field_ftr_bb_btw',       'label' => 'BTW nummer',      'name' => 'btw',       'type' => 'text'],
+                ],
+            ],
+            // Payment Logos
+            [
+                'key'          => 'field_ftr_pay',
+                'label'        => 'Betaalmethode Logo\'s',
+                'name'         => 'payment_logos',
+                'type'         => 'repeater',
+                'button_label' => 'Logo toevoegen',
+                'max'          => 12,
+                'layout'       => 'table',
+                'sub_fields'   => [
+                    ['key' => 'field_ftr_pay_name', 'label' => 'Naam', 'name' => 'name', 'type' => 'text'],
+                    ['key' => 'field_ftr_pay_logo', 'label' => 'Logo', 'name' => 'logo', 'type' => 'image', 'return_format' => 'url'],
+                ],
+            ],
+        ],
+        'location' => [
+            [['param' => 'options_page', 'operator' => '==', 'value' => 'footer']],
+        ],
+    ]);
+
+    // ── SITE SETTINGS ──────────────────────────────────────────────────
+    acf_add_local_field_group([
+        'key'    => 'group_site_settings',
+        'title'  => 'Site Instellingen',
+        'fields' => [
+            ['key' => 'field_ss_name',           'label' => 'Site naam',           'name' => 'site_name',           'type' => 'text',     'default_value' => 'OEMLine'],
+            ['key' => 'field_ss_tagline',        'label' => 'Tagline',             'name' => 'site_tagline',        'type' => 'text',     'default_value' => 'Auto-onderdelen van topmerken'],
+            ['key' => 'field_ss_phone',          'label' => 'Telefoonnummer',      'name' => 'phone',               'type' => 'text'],
+            ['key' => 'field_ss_email',          'label' => 'E-mail',              'name' => 'email',               'type' => 'email'],
+            ['key' => 'field_ss_address',        'label' => 'Adres',               'name' => 'address',             'type' => 'text'],
+            ['key' => 'field_ss_city',           'label' => 'Stad',                'name' => 'city',                'type' => 'text'],
+            ['key' => 'field_ss_country',        'label' => 'Land',                'name' => 'country',             'type' => 'text',     'default_value' => 'Nederland'],
+            ['key' => 'field_ss_hours',          'label' => 'Openingstijden',      'name' => 'hours',               'type' => 'text'],
+            ['key' => 'field_ss_company',        'label' => 'Bedrijfsnaam',        'name' => 'company_name',        'type' => 'text'],
+            ['key' => 'field_ss_legal',          'label' => 'Juridische naam',     'name' => 'company_legal_name',  'type' => 'text'],
+            ['key' => 'field_ss_facebook',       'label' => 'Facebook URL',        'name' => 'facebook',            'type' => 'url'],
+            ['key' => 'field_ss_instagram',      'label' => 'Instagram URL',       'name' => 'instagram',           'type' => 'url'],
+            ['key' => 'field_ss_twitter',        'label' => 'Twitter/X URL',       'name' => 'twitter',             'type' => 'url'],
+            ['key' => 'field_ss_youtube',        'label' => 'YouTube URL',         'name' => 'youtube',             'type' => 'url'],
+            ['key' => 'field_ss_linkedin',       'label' => 'LinkedIn URL',        'name' => 'linkedin',            'type' => 'url'],
+        ],
+        'location' => [
+            [['param' => 'options_page', 'operator' => '==', 'value' => 'site-settings']],
+        ],
+    ]);
+
+    // ── THEME SETTINGS ─────────────────────────────────────────────────
+    acf_add_local_field_group([
+        'key'    => 'group_theme_settings',
+        'title'  => 'Thema Instellingen',
+        'fields' => [
+            ['key' => 'field_ts_primary',  'label' => 'Primaire kleur',      'name' => 'primary_color', 'type' => 'color_picker', 'default_value' => '#F36C21'],
+            ['key' => 'field_ts_accent',   'label' => 'Accent kleur',        'name' => 'accent_color',  'type' => 'color_picker', 'default_value' => '#1a1a2e'],
+            ['key' => 'field_ts_text',     'label' => 'Tekstkleur',          'name' => 'text_color',    'type' => 'color_picker', 'default_value' => '#333333'],
+            ['key' => 'field_ts_bg',       'label' => 'Achtergrondkleur',    'name' => 'bg_color',      'type' => 'color_picker', 'default_value' => '#ffffff'],
+            ['key' => 'field_ts_logo',     'label' => 'Logo URL',            'name' => 'logo_url',      'type' => 'url'],
+            ['key' => 'field_ts_favicon',  'label' => 'Favicon URL',         'name' => 'favicon_url',   'type' => 'url'],
+        ],
+        'location' => [
+            [['param' => 'options_page', 'operator' => '==', 'value' => 'theme-settings']],
+        ],
+    ]);
 });
 
 // ============================================================
@@ -565,6 +871,7 @@ function oemline_get_options_field_map(): array {
         'header' => [
             'announcement_bar', 'top_bar', 'main_nav',
             'shipping_badge', 'mobile_menu',
+            'departments_menu', 'main_menu',
         ],
         'footer' => [
             'newsletter', 'contact_section', 'categories_section',

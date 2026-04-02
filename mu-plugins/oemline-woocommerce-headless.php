@@ -742,11 +742,22 @@ add_action('rest_api_init', function () {
                 $zone = new WC_Shipping_Zone($zone_data['id']);
                 $zone_methods = $zone->get_shipping_methods(true);
                 foreach ($zone_methods as $method) {
-                    $methods[] = [
+                    $item = [
                         'id'    => $method->id . ':' . $method->instance_id,
                         'title' => $method->get_title(),
                         'cost'  => method_exists($method, 'get_option') ? $method->get_option('cost', '0') : '0',
                     ];
+                    // Include min_amount for free_shipping so frontend can check threshold
+                    if ($method->id === 'free_shipping') {
+                        $item['cost'] = '0';
+                        $item['min_amount'] = method_exists($method, 'get_option')
+                            ? floatval($method->get_option('min_amount', '0'))
+                            : 0;
+                        $item['requires'] = method_exists($method, 'get_option')
+                            ? $method->get_option('requires', '')
+                            : '';
+                    }
+                    $methods[] = $item;
                 }
             }
 

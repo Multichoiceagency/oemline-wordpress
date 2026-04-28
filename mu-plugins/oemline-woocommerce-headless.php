@@ -112,6 +112,29 @@ add_action('rest_api_init', function () {
                 }
             }
 
+            // Generate a 24h verification token, persist it on the user,
+            // and send a verify-email link. This was previously missing
+            // entirely — the storefront UI promised "we hebben een
+            // verificatielink gestuurd" but no mail was ever queued.
+            $verify_token = bin2hex(random_bytes(32));
+            $verify_expires = time() + DAY_IN_SECONDS;
+            update_user_meta($user_id, 'oemline_email_verified', '0');
+            update_user_meta($user_id, 'oemline_verify_token', $verify_token);
+            update_user_meta($user_id, 'oemline_verify_expires', $verify_expires);
+
+            $verify_base = getenv('STOREFRONT_URL') ?: 'https://oemline.eu';
+            $verify_url = rtrim($verify_base, '/') . '/account/verify?token=' . rawurlencode($verify_token) . '&user=' . $user_id;
+            $site_name = get_bloginfo('name') ?: 'OEMLine';
+            $subject = sprintf('[%s] Bevestig je e-mailadres', $site_name);
+            $greeting_name = trim($first_name) ?: $email;
+            $body  = "Hoi {$greeting_name},\n\n";
+            $body .= "Bedankt voor je registratie bij {$site_name}. Bevestig je e-mailadres door op onderstaande link te klikken:\n\n";
+            $body .= "{$verify_url}\n\n";
+            $body .= "De link is 24 uur geldig. Heb je je niet aangemeld? Negeer deze e-mail.\n\n";
+            $body .= "Groet,\n{$site_name}\n";
+            $headers = ['Content-Type: text/plain; charset=UTF-8'];
+            $mail_sent = wp_mail($email, $subject, $body, $headers);
+
             return new WP_REST_Response([
                 'success' => true,
                 'user'    => [
@@ -121,7 +144,79 @@ add_action('rest_api_init', function () {
                     'last_name'  => $last_name,
                 ],
                 'token' => $token_data,
+                'requiresVerification' => true,
+                'verificationEmailSent' => (bool) $mail_sent,
             ], 201);
+        },
+        'permission_callback' => '__return_true',
+    ]);
+
+    // POST /wp-json/oemline/v1/auth/verify — exchange a verify token for
+    // an email_verified flag flip. Idempotent; returns 200 if already
+    // verified so the storefront can land safely on the success page.
+    register_rest_route('oemline/v1', '/auth/verify', [
+        'methods'  => 'POST',
+        'callback' => function (WP_REST_Request $request) {
+            $token = sanitize_text_field((string) $request->get_param('token'));
+            $user_id = (int) $request->get_param('user');
+            if (!$token || !$user_id) {
+                return new WP_REST_Response(['error' => 'Token en user-id zijn verplicht.'], 400);
+            }
+            $user = get_user_by('id', $user_id);
+            if (!$user) {
+                return new WP_REST_Response(['error' => 'Onbekende gebruiker.'], 404);
+            }
+            if ('1' === (string) get_user_meta($user_id, 'oemline_email_verified', true)) {
+                return new WP_REST_Response(['success' => true, 'alreadyVerified' => true]);
+            }
+            $stored = (string) get_user_meta($user_id, 'oemline_verify_token', true);
+            $expires = (int) get_user_meta($user_id, 'oemline_verify_expires', true);
+            if (!$stored || !hash_equals($stored, $token)) {
+                return new WP_REST_Response(['error' => 'Ongeldige verificatielink.'], 400);
+            }
+            if ($expires && time() > $expires) {
+                return new WP_REST_Response(['error' => 'Deze verificatielink is verlopen. Vraag een nieuwe aan.'], 410);
+            }
+            update_user_meta($user_id, 'oemline_email_verified', '1');
+            delete_user_meta($user_id, 'oemline_verify_token');
+            delete_user_meta($user_id, 'oemline_verify_expires');
+            return new WP_REST_Response(['success' => true, 'email' => $user->user_email]);
+        },
+        'permission_callback' => '__return_true',
+    ]);
+
+    // POST /wp-json/oemline/v1/auth/resend-verification — re-send the
+    // verification email. Useful when the original was lost / expired.
+    register_rest_route('oemline/v1', '/auth/resend-verification', [
+        'methods'  => 'POST',
+        'callback' => function (WP_REST_Request $request) {
+            $email = sanitize_email((string) $request->get_param('email'));
+            if (!$email || !is_email($email)) {
+                return new WP_REST_Response(['error' => 'Ongeldig e-mailadres'], 400);
+            }
+            $user = get_user_by('email', $email);
+            // Always return 200 to avoid leaking which addresses exist.
+            if (!$user) {
+                return new WP_REST_Response(['success' => true]);
+            }
+            if ('1' === (string) get_user_meta($user->ID, 'oemline_email_verified', true)) {
+                return new WP_REST_Response(['success' => true, 'alreadyVerified' => true]);
+            }
+            $verify_token = bin2hex(random_bytes(32));
+            update_user_meta($user->ID, 'oemline_verify_token', $verify_token);
+            update_user_meta($user->ID, 'oemline_verify_expires', time() + DAY_IN_SECONDS);
+            $verify_base = getenv('STOREFRONT_URL') ?: 'https://oemline.eu';
+            $verify_url = rtrim($verify_base, '/') . '/account/verify?token=' . rawurlencode($verify_token) . '&user=' . $user->ID;
+            $site_name = get_bloginfo('name') ?: 'OEMLine';
+            $subject = sprintf('[%s] Bevestig je e-mailadres', $site_name);
+            $first_name = trim((string) get_user_meta($user->ID, 'first_name', true)) ?: $user->user_email;
+            $body  = "Hoi {$first_name},\n\n";
+            $body .= "Hier is je nieuwe verificatielink voor {$site_name}:\n\n";
+            $body .= "{$verify_url}\n\n";
+            $body .= "De link is 24 uur geldig.\n\n";
+            $body .= "Groet,\n{$site_name}\n";
+            $sent = wp_mail($user->user_email, $subject, $body, ['Content-Type: text/plain; charset=UTF-8']);
+            return new WP_REST_Response(['success' => true, 'verificationEmailSent' => (bool) $sent]);
         },
         'permission_callback' => '__return_true',
     ]);

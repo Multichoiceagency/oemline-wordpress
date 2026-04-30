@@ -2,7 +2,7 @@
 /**
  * Plugin Name: OEMline WooCommerce Headless
  * Description: Configures WooCommerce for headless storefront usage with CoCart, JWT auth, and REST API.
- * Version: 1.0.0
+ * Version: 1.0.1
  */
 
 // ============================================================

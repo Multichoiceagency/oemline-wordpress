@@ -123,7 +123,7 @@ add_action('rest_api_init', function () {
             update_user_meta($user_id, 'oemline_verify_expires', $verify_expires);
 
             $verify_base = getenv('STOREFRONT_URL') ?: 'https://oemline.eu';
-            $verify_url = rtrim($verify_base, '/') . '/account/verify?token=' . rawurlencode($verify_token) . '&user=' . $user_id;
+            $verify_url = rtrim($verify_base, '/') . '/verify?token=' . rawurlencode($verify_token) . '&user=' . $user_id;
             $site_name = get_bloginfo('name') ?: 'OEMLine';
             $subject = sprintf('[%s] Bevestig je e-mailadres', $site_name);
             $greeting_name = trim($first_name) ?: $email;
@@ -206,7 +206,7 @@ add_action('rest_api_init', function () {
             update_user_meta($user->ID, 'oemline_verify_token', $verify_token);
             update_user_meta($user->ID, 'oemline_verify_expires', time() + DAY_IN_SECONDS);
             $verify_base = getenv('STOREFRONT_URL') ?: 'https://oemline.eu';
-            $verify_url = rtrim($verify_base, '/') . '/account/verify?token=' . rawurlencode($verify_token) . '&user=' . $user->ID;
+            $verify_url = rtrim($verify_base, '/') . '/verify?token=' . rawurlencode($verify_token) . '&user=' . $user->ID;
             $site_name = get_bloginfo('name') ?: 'OEMLine';
             $subject = sprintf('[%s] Bevestig je e-mailadres', $site_name);
             $first_name = trim((string) get_user_meta($user->ID, 'first_name', true)) ?: $user->user_email;

@@ -361,15 +361,21 @@ add_action('acf/init', function () {
 });
 
 // ============================================================
-// 12. MEILISEARCH SEARCH ENDPOINTS
-// Proxies search queries to the Dashboard API's Meilisearch-indexed products.
+// 12. SEARCH ENDPOINTS (proxy to Dashboard API → Elasticsearch)
+// Proxies search queries to the Dashboard API's Elasticsearch products_v3 index.
 // Used by ACF fields for product/category/brand autocomplete,
 // and by the storefront for dynamic searching.
 // ============================================================
 add_action('rest_api_init', function () {
 
-    $dashboard_url = defined('DASHBOARD_API_URL') ? DASHBOARD_API_URL : (getenv('DASHBOARD_API_URL') ?: '');
-    $dashboard_key = defined('DASHBOARD_API_KEY') ? DASHBOARD_API_KEY : (getenv('DASHBOARD_API_KEY') ?: '');
+    // Prefer the new OEMLINE_API_* names; fall back to legacy DASHBOARD_API_*
+    // for backwards-compat during the env rollover.
+    $dashboard_url = defined('OEMLINE_API_URL') ? OEMLINE_API_URL
+        : (getenv('OEMLINE_API_URL')
+            ?: (defined('DASHBOARD_API_URL') ? DASHBOARD_API_URL : (getenv('DASHBOARD_API_URL') ?: '')));
+    $dashboard_key = defined('OEMLINE_API_KEY') ? OEMLINE_API_KEY
+        : (getenv('OEMLINE_API_KEY')
+            ?: (defined('DASHBOARD_API_KEY') ? DASHBOARD_API_KEY : (getenv('DASHBOARD_API_KEY') ?: '')));
 
     // GET /wp-json/oemline/v1/search/products?q=...&limit=20&page=1
     register_rest_route('oemline/v1', '/search/products', [
@@ -558,7 +564,9 @@ add_action('admin_menu', function () {
                         <tr>
                             <th>Dashboard API</th>
                             <td><?php
-                                $api = defined('DASHBOARD_API_URL') ? DASHBOARD_API_URL : (getenv('DASHBOARD_API_URL') ?: 'Not configured');
+                                $api = defined('OEMLINE_API_URL') ? OEMLINE_API_URL
+                                    : (getenv('OEMLINE_API_URL')
+                                        ?: (defined('DASHBOARD_API_URL') ? DASHBOARD_API_URL : (getenv('DASHBOARD_API_URL') ?: 'Not configured')));
                                 echo esc_html($api);
                             ?></td>
                         </tr>
